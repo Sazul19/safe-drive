@@ -1,0 +1,549 @@
+/* ── Redesigned Dashboards stylesheet – command center theme ── */
+
+.pageHeader {
+  margin-bottom: 1.5rem;
+}
+
+.sectionTitle {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+/* Stats Grid Board */
+.statsBar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.statCard {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  box-shadow: var(--inner-glow);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.statCard:hover {
+  border-color: var(--border-hover);
+  background: var(--card-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.statValue {
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.statLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* Stat card color themes mapping to image */
+.statCard.danger {
+  border-color: rgba(239, 68, 68, 0.25);
+}
+.statCard.danger .statValue {
+  color: var(--red);
+  text-shadow: var(--glow-red);
+}
+
+.statCard.warning {
+  border-color: rgba(245, 158, 11, 0.25);
+}
+.statCard.warning .statValue {
+  color: var(--amber);
+  text-shadow: var(--glow-amber);
+}
+
+.statCard.success {
+  border-color: rgba(16, 185, 129, 0.25);
+}
+.statCard.success .statValue {
+  color: var(--green);
+  text-shadow: var(--glow-green);
+}
+
+/* Status Indicator row */
+.hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* Alerts layout list */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Empty incident status */
+.empty {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--text-muted);
+  background: var(--card);
+  border-radius: var(--radius);
+  border: 1px dashed var(--border);
+  box-shadow: var(--inner-glow);
+}
+
+.emptyIcon {
+  display: block;
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.6;
+  filter: drop-shadow(0 0 10px rgba(255,255,255,0.05));
+}
+
+.empty p {
+  margin: 0;
+  max-width: 340px;
+  margin-left: auto;
+  margin-right: auto;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  font-weight: 500;
+}
+
+/* ── Incident Alert Card ── */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  border: 1px solid var(--border);
+  box-shadow: var(--inner-glow);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  border-color: var(--border-hover);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+
+.cardTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.vehicle {
+  font-weight: 800;
+  font-size: 1.15rem;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.cardMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.newBadge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: var(--red);
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  box-shadow: var(--glow-red);
+  animation: livePulse 1.5s infinite;
+}
+
+@keyframes livePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
+}
+
+/* Accident type pills row */
+.accidentRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+  align-items: center;
+}
+
+.accidentType {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.metaPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+/* Address detail text */
+.address {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 500;
+}
+
+.time {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+  font-weight: 500;
+}
+
+/* Indicators Box (Admin view) */
+.indicators {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin: 1.25rem 0;
+  padding: 1.25rem;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+.indicator {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Action button triggers (Police/Ambulance) */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+}
+
+.btnStatus {
+  padding: 0.6rem 1.25rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  background: var(--amber-bg);
+  color: var(--amber);
+  border: 1px solid var(--amber-border);
+  transition: all 0.2s ease;
+}
+
+.btnStatus:hover:not(:disabled) {
+  background: var(--amber);
+  color: var(--bg);
+  box-shadow: var(--glow-amber);
+  transform: translateY(-1px);
+}
+
+.btnStatus:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btnArrived {
+  padding: 0.6rem 1.25rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  background: var(--green-bg);
+  color: var(--green);
+  border: 1px solid var(--green-border);
+  transition: all 0.2s ease;
+}
+
+.btnArrived:hover:not(:disabled) {
+  background: var(--green);
+  color: var(--bg);
+  box-shadow: var(--glow-green);
+  transform: translateY(-1px);
+}
+
+.btnArrived:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* External Link Maps wrapper */
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--blue);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  background: var(--blue-bg);
+  border: 1px solid var(--blue-border);
+  transition: all 0.2s;
+}
+
+.link:hover {
+  background: var(--blue);
+  color: white;
+  box-shadow: var(--glow-blue);
+}
+
+/* BLE connection status bar */
+.bleBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.25rem;
+  box-shadow: var(--inner-glow);
+}
+
+.bleInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.bleOn {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--green);
+  text-shadow: var(--glow-green);
+}
+
+.bleOff {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--text-muted);
+}
+
+.bleMsg {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.bleUnsupported {
+  font-size: 0.8rem;
+  color: var(--amber);
+  font-weight: 600;
+}
+
+.btnConnect {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  background: var(--blue-bg);
+  color: var(--blue);
+  border: 1px solid var(--blue-border);
+  transition: all 0.2s;
+}
+
+.btnConnect:hover {
+  background: var(--blue);
+  color: white;
+  box-shadow: var(--glow-blue);
+  transform: translateY(-1px);
+}
+
+.btnDisconnect {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  background: var(--red-bg);
+  color: var(--red);
+  border: 1px solid var(--red-border);
+  transition: all 0.2s;
+}
+
+.btnDisconnect:hover {
+  background: var(--red);
+  color: white;
+  box-shadow: var(--glow-red);
+  transform: translateY(-1px);
+}
+
+/* Responsive configurations */
+@media (max-width: 900px) {
+  .statsBar {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .card {
+    padding: 1.25rem;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+
+  .btnStatus,
+  .btnArrived {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Left glow boundary severity strips */
+.card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  border-radius: var(--radius) 0 0 var(--radius);
+  background: var(--border);
+  transition: background 0.3s;
+}
+
+.card.critical::before { background: var(--red);    box-shadow: 2px 0 12px rgba(239,68,68,0.6); }
+.card.high::before     { background: #f97316;        box-shadow: 2px 0 10px rgba(249,115,22,0.5); }
+.card.medium::before   { background: var(--amber);   box-shadow: 2px 0 10px rgba(245,158,11,0.5); }
+.card.low::before      { background: var(--green);   box-shadow: 2px 0 8px rgba(16,185,129,0.5); }
+
+/* Card sliding animation on load */
+@keyframes cardSlideIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.card {
+  animation: cardSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) ease-out;
+}
+
+/* Elapsed tracking time badge */
+.elapsed {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  padding: 0.15rem 0.55rem;
+  background: rgba(255,255,255,0.04);
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Nearest responder unit target badge */
+.nearestBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--green);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  animation: livePulse 2s infinite;
+}
+
+.medicalBox {
+  margin: 1rem 0;
+  padding: 1rem 1.25rem;
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: var(--radius);
+}
+
+.medicalBoxTitle {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--red);
+  margin-bottom: 0.6rem;
+}
+
+.medicalRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.medicalRow:last-child {
+  margin-bottom: 0;
+}
+
+.contactChip {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}

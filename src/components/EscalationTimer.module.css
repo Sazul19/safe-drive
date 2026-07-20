@@ -1,0 +1,85 @@
+.wrap {
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: var(--radius-sm);
+  transition: all 0.3s;
+}
+
+.wrap.escalated {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.3);
+  animation: escalatePulse 2s ease-in-out infinite;
+}
+
+@keyframes escalatePulse {
+  0%, 100% { border-color: rgba(239, 68, 68, 0.3); }
+  50%       { border-color: rgba(239, 68, 68, 0.7); box-shadow: 0 0 12px rgba(239, 68, 68, 0.2); }
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  gap: 0.5rem;
+}
+
+.label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--amber);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.escalated .label {
+  color: var(--red);
+}
+
+.countdown {
+  font-size: 1.1rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--amber);
+  letter-spacing: 0.04em;
+}
+
+/* Track */
+.track {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 99px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.bar {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #d97706, var(--amber));
+  transition: width 1s linear;
+}
+
+.bar.urgent {
+  background: linear-gradient(90deg, var(--red-deep), var(--red));
+  animation: urgentPulse 0.8s ease-in-out infinite;
+}
+
+.bar.done {
+  width: 100% !important;
+  background: var(--red);
+}
+
+@keyframes urgentPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
+}
+
+.note {
+  font-size: 0.7rem;
+  color: var(--red);
+  margin-top: 0.4rem;
+  font-weight: 500;
+}

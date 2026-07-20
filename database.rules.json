@@ -1,0 +1,24 @@
+{
+  "rules": {
+    "alerts": {
+      ".read": true,
+      ".write": true
+    },
+    "users": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid == $uid || root.child('users').child(auth.uid).child('role').val() == 'admin')",
+        ".write": "auth != null && (auth.uid == $uid || root.child('users').child(auth.uid).child('role').val() == 'admin')"
+      }
+    },
+    "units": {
+      ".read": true,
+      "$uid": {
+        ".write": "auth != null && auth.uid == $uid"
+      }
+    },
+    "auditLog": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    }
+  }
+}
