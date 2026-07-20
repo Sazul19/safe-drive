@@ -1,0 +1,10 @@
+node_modules
+dist
+.env
+docs
+CLAUDE.md
+TODO.md
+.env.local
+*.log
+.DS_Store
+ML/.venv

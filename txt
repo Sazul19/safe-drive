@@ -1,0 +1,2 @@
+major :50 m/s²
+minor:29.4 m/s²

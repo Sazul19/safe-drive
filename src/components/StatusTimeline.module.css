@@ -1,0 +1,105 @@
+.timeline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 0.5rem;
+  margin: 1rem 0;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  position: relative;
+}
+
+.step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+
+.line {
+  position: absolute;
+  top: 14px;
+  left: -50%;
+  right: -50%;
+  height: 2px;
+  background: var(--border);
+  z-index: -1;
+}
+
+.step:first-child .line {
+  left: 50%;
+}
+
+.step:last-child .line {
+  right: 50%;
+}
+
+.node {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bg-3);
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.icon {
+  font-size: 0.8rem;
+  opacity: 0.5;
+}
+
+.label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Completed State */
+.completed .line {
+  background: var(--green);
+  opacity: 0.4;
+}
+
+.completed .node {
+  border-color: var(--green);
+  background: var(--green-bg);
+}
+
+.completed .icon {
+  opacity: 1;
+}
+
+.completed .label {
+  color: var(--text-secondary);
+}
+
+/* Active State */
+.active .node {
+  border-color: var(--amber);
+  background: var(--amber-bg);
+  box-shadow: 0 0 12px var(--amber-border);
+  transform: scale(1.1);
+}
+
+.active .icon {
+  opacity: 1;
+}
+
+.active .label {
+  color: var(--text-primary);
+}
+
+@media (max-width: 480px) {
+  .label {
+    display: none;
+  }
+}

@@ -1,0 +1,260 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  /* Dynamic HSL Curated Palette Colors */
+  --red: hsl(359, 100%, 65%);
+  --red-deep: hsl(359, 80%, 45%);
+  --red-bg: hsla(359, 100%, 65%, 0.12);
+  --red-border: hsla(359, 100%, 65%, 0.35);
+
+  --amber: hsl(35, 100%, 55%);
+  --amber-dark: hsl(35, 90%, 40%);
+  --amber-bg: hsla(35, 100%, 55%, 0.12);
+  --amber-border: hsla(35, 100%, 55%, 0.35);
+
+  --green: hsl(150, 100%, 43%);
+  --green-dark: hsl(150, 80%, 30%);
+  --green-bg: hsla(150, 100%, 43%, 0.12);
+  --green-border: hsla(150, 100%, 43%, 0.35);
+
+  --blue: hsl(210, 100%, 60%);
+  --blue-bg: hsla(210, 100%, 60%, 0.12);
+  --blue-border: hsla(210, 100%, 60%, 0.35);
+
+  --font: 'DM Sans', 'Inter', system-ui, sans-serif;
+  --radius: 1rem;
+  --radius-sm: 0.6rem;
+  --radius-lg: 1.5rem;
+  
+  --accent: hsl(359, 100%, 65%);
+  --accent-glow: hsla(359, 100%, 65%, 0.25);
+  --police-color: hsl(210, 100%, 60%);
+  --ambulance-color: hsl(150, 100%, 43%);
+}
+
+/* 🌙 Dark Theme (Default) */
+[data-theme='dark'],
+:root:not([data-theme='light']) {
+  --bg: hsl(223, 47%, 6%);
+  --bg-sidebar: hsl(220, 55%, 12%);
+  --bg-2: hsl(223, 35%, 11%);
+  --bg-3: hsl(223, 30%, 15%);
+  --card: hsla(223, 35%, 11%, 0.65);
+  --card-hover: hsla(223, 35%, 15%, 0.85);
+  --border: hsla(223, 100%, 80%, 0.08);
+  --border-hover: hsla(223, 100%, 80%, 0.16);
+  --glass: hsla(223, 40%, 8%, 0.75);
+  --glass-border: hsla(223, 100%, 80%, 0.08);
+  --inner-glow: inset 0 0 20px hsla(0, 0%, 100%, 0.03);
+  --text-primary: hsl(210, 40%, 98%);
+  --text-secondary: hsl(215, 25%, 80%);
+  --text-muted: hsl(215, 16%, 58%);
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.7);
+  
+  /* Status Glows */
+  --glow-red: 0 0 16px hsla(359, 100%, 65%, 0.45);
+  --glow-amber: 0 0 16px hsla(35, 100%, 55%, 0.45);
+  --glow-green: 0 0 16px hsla(150, 100%, 43%, 0.45);
+  --glow-blue: 0 0 16px hsla(210, 100%, 60%, 0.45);
+}
+
+/* ☀️ Light Theme */
+[data-theme='light'] {
+  --bg: hsl(210, 40%, 98%);
+  --bg-sidebar: hsl(214, 30%, 94%);
+  --bg-2: #ffffff;
+  --bg-3: hsl(210, 40%, 95%);
+  --card: hsla(0, 0%, 100%, 0.8);
+  --card-hover: #ffffff;
+  --border: hsla(0, 0%, 0%, 0.06);
+  --border-hover: hsla(0, 0%, 0%, 0.12);
+  --glass: hsla(0, 0%, 100%, 0.85);
+  --glass-border: hsla(0, 0%, 0%, 0.06);
+  --inner-glow: inset 0 0 20px hsla(0, 0%, 0%, 0.01);
+  --text-primary: hsl(222, 47%, 11%);
+  --text-secondary: hsl(215, 20%, 35%);
+  --text-muted: hsl(215, 16%, 65%);
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.08);
+
+  /* Status Glows */
+  --glow-red: 0 4px 12px hsla(359, 100%, 65%, 0.25);
+  --glow-amber: 0 4px 12px hsla(35, 100%, 55%, 0.25);
+  --glow-green: 0 4px 12px hsla(150, 100%, 43%, 0.25);
+  --glow-blue: 0 4px 12px hsla(210, 100%, 60%, 0.25);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text-primary);
+  min-height: 100vh;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+button {
+  cursor: pointer;
+  border: none;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ───── Severity Badges ───── */
+.severity-critical {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  box-shadow: var(--glow-red);
+}
+.severity-high {
+  background: rgba(249, 115, 22, 0.15);
+  color: #fed7aa;
+  border: 1px solid rgba(249, 115, 22, 0.4);
+  box-shadow: var(--glow-amber);
+}
+.severity-medium {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fef08a;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+.severity-low {
+  background: rgba(16, 185, 129, 0.15);
+  color: #a7f3d0;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+/* ───── Status Badges ───── */
+.status-pending {
+  background: var(--red-bg);
+  color: #f87171;
+  border: 1px solid var(--red-border);
+}
+.status-en_route {
+  background: var(--amber-bg);
+  color: var(--amber);
+  border: 1px solid var(--amber-border);
+}
+.status-arrived {
+  background: var(--green-bg);
+  color: var(--green);
+  border: 1px solid var(--green-border);
+}
+
+/* ───── Scrollbar ───── */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-hover);
+}
+
+/* ───── Auth loading ───── */
+.authLoading {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+/* ───── Animations ───── */
+@keyframes pulse-ring {
+  0% { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+@keyframes scan {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+.scanline {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.15;
+  animation: scan 6s linear infinite;
+  pointer-events: none;
+  z-index: 50;
+}
+
+/* ───── Leaflet Popup overrides for both themes ───── */
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--glass) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--glass-border) !important;
+  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-lg) !important;
+  border-radius: 8px !important;
+}
+
+.leaflet-popup-content {
+  font-family: var(--font) !important;
+  font-size: 0.82rem !important;
+  line-height: 1.4 !important;
+  color: var(--text-secondary) !important;
+  margin: 12px 16px !important;
+}
+
+.leaflet-popup-content strong {
+  color: var(--text-primary) !important;
+}
+
+.leaflet-popup-close-button {
+  color: var(--text-muted) !important;
+  padding: 4px !important;
+}
+
+.leaflet-popup-close-button:hover {
+  color: var(--text-primary) !important;
+  background: transparent !important;
+}
+
+/* ───── Pulsing Marker Animation ───── */
+@keyframes marker-pulse {
+  0% { transform: scale(0.92); opacity: 0.9; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+  70% { transform: scale(1.08); opacity: 1; box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
+  100% { transform: scale(0.92); opacity: 0.9; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.pulsing-marker {
+  animation: marker-pulse 2s infinite;
+}
+
