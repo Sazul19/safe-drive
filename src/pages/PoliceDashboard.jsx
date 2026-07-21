@@ -93,7 +93,7 @@ function AlertCard({ a, index, onStatusChange, isFocused, onToggleFocus }) {
           📍 Open in Google Maps →
         </a>
         <button
-          style={{ padding: '0.4rem 0.85rem', fontSize: '0.78rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: isFocused ? 'var(--blue-bg)' : 'transparent', color: isFocused ? 'var(--blue)' : undefined }}
+          style={{ padding: '0.4rem 0.85rem', fontSize: '0.78rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: isFocused ? 'var(--blue-bg)' : 'transparent', color: isFocused ? 'var(--blue)' : 'var(--text-secondary)' }}
           onClick={() => onToggleFocus(a.id)}
         >
           {isFocused ? '✖ Show All on Map' : '🎯 Focus on Map'}
