@@ -92,7 +92,7 @@ export default function DashboardLayout({ title, role, user, onLogout, children 
             <span style={{ filter: 'drop-shadow(0 0 8px var(--red))' }}>🚨</span>
           </div>
           <div className={styles.brandText}>
-            <span className={styles.brandTitle}>Smart Alert System</span>
+            <span className={styles.brandTitle}>Safe Drive</span>
             <span className={styles.brandSubtitle}>Accident Detection & Response</span>
           </div>
           <button className={styles.sidebarClose} onClick={() => setMobileMenuOpen(false)}>
