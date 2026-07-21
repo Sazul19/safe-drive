@@ -43,7 +43,7 @@ const AlertCard = memo(function AlertCard({ a, isNearest, deletedByUid, isFocuse
       style={isFocused ? { outline: '2px solid var(--blue)', outlineOffset: '-1px' } : undefined}
     >
       <div className={styles.cardTop}>
-        <span className={styles.vehicle}>🚗 Smart Vehicle Alert</span>
+        <span className={styles.vehicle}> Safe Drive</span>
         <div className={styles.cardMeta}>
           {isNearest && <span className={styles.nearestBadge}>📍 Nearest Unit</span>}
           <span className={styles.elapsed}>⏱ {elapsed}</span>
