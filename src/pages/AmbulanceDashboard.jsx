@@ -62,11 +62,14 @@ function MedicalInfoBox({ profile, contacts }) {
 }
 
 // ── Alert Card (Ambulance view) ─────────────────────────────────────────────
-function AlertCard({ a, index, onStatusChange }) {
+function AlertCard({ a, index, onStatusChange, isFocused, onToggleFocus }) {
   const elapsed = useElapsed(a.createdAt)
 
   return (
-    <div className={`${styles.card} ${a.severity ? styles[a.severity] : ''}`}>
+    <div
+      className={`${styles.card} ${a.severity ? styles[a.severity] : ''}`}
+      style={isFocused ? { outline: '2px solid var(--blue)', outlineOffset: '-1px' } : undefined}
+    >
       <div className={styles.cardTop}>
         <span className={styles.vehicle}>🚗 Smart Vehicle Alert</span>
         <div className={styles.cardMeta}>
@@ -112,14 +115,22 @@ function AlertCard({ a, index, onStatusChange }) {
         </button>
       </div>
 
-      <a
-        href={`https://www.google.com/maps?q=${a.lat},${a.lng}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={styles.link}
-      >
-        📍 Open in Google Maps →
-      </a>
+      <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <a
+          href={`https://www.google.com/maps?q=${a.lat},${a.lng}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.link}
+        >
+          📍 Open in Google Maps →
+        </a>
+        <button
+          style={{ padding: '0.4rem 0.85rem', fontSize: '0.78rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: isFocused ? 'var(--blue-bg)' : 'transparent', color: isFocused ? 'var(--blue)' : undefined }}
+          onClick={() => onToggleFocus(a.id)}
+        >
+          {isFocused ? '✖ Show All on Map' : '🎯 Focus on Map'}
+        </button>
+      </div>
     </div>
   )
 }
@@ -131,6 +142,9 @@ export default function AmbulanceDashboard({ onLogout }) {
   const [units, setUnits]       = useState([])
   const [popupAlert, setPopupAlert] = useState(null)
   const [filters, setFilters]   = useState({ severity: '', ambulanceStatus: '', sort: 'newest' })
+  // Clicking "Focus on Map" on an alert card filters the map down to just
+  // that incident (and units responding to it) instead of showing everything.
+  const [focusedAlertId, setFocusedAlertId] = useState(null)
   const prevCountRef    = useRef(0)
   const initialLoadRef  = useRef(true)
   const simPosRef = useRef(null)
@@ -265,10 +279,21 @@ export default function AmbulanceDashboard({ onLogout }) {
     updateAlertStatus(alertId, 'ambulance', status).catch(console.error)
   }
 
+  const handleToggleFocus = (alertId) => {
+    setFocusedAlertId(prev => prev === alertId ? null : alertId)
+  }
+
   const filteredAlerts = applyFilters(alerts, filters, 'ambulance')
   const pendingCount  = alerts.filter(a => a.ambulanceStatus === 'pending').length
   const enRouteCount  = alerts.filter(a => a.ambulanceStatus === 'en_route').length
   const arrivedCount  = alerts.filter(a => a.ambulanceStatus === 'arrived').length
+
+  // When an accident is focused, the map shows only that one incident and
+  // only units responding to it. Unfocused, the map keeps showing every
+  // alert regardless of the list's severity/status filter (unchanged from
+  // before — the map and the filtered list below are independent views).
+  const mapAlerts = focusedAlertId ? alerts.filter(a => a.id === focusedAlertId) : alerts
+  const mapUnits = focusedAlertId ? units.filter(u => u.alertId === focusedAlertId) : units
 
   return (
     <DashboardLayout title="Emergency Alerts" role="ambulance" user={user} onLogout={onLogout}>
@@ -305,7 +330,18 @@ export default function AmbulanceDashboard({ onLogout }) {
       </p>
 
       {/* Dispatch Map */}
-      <TrackingMap alerts={alerts} units={units} />
+      <TrackingMap alerts={mapAlerts} units={mapUnits} focusedAlertId={focusedAlertId} />
+      {focusedAlertId && (
+        <p className={styles.hint} style={{ marginTop: '-1.25rem' }}>
+          🎯 Showing 1 of {alerts.length} accidents on the map.
+          <button
+            onClick={() => setFocusedAlertId(null)}
+            style={{ marginLeft: '0.5rem', background: 'transparent', border: 'none', color: 'var(--blue)', cursor: 'pointer', fontWeight: 600, textDecoration: 'underline' }}
+          >
+            Show All
+          </button>
+        </p>
+      )}
 
       {/* Filters */}
       <AlertFilters
@@ -327,7 +363,14 @@ export default function AmbulanceDashboard({ onLogout }) {
           </div>
         ) : (
           filteredAlerts.map((a, i) => (
-            <AlertCard key={a.id} a={a} index={i} onStatusChange={setStatus} />
+            <AlertCard
+              key={a.id}
+              a={a}
+              index={i}
+              onStatusChange={setStatus}
+              isFocused={focusedAlertId === a.id}
+              onToggleFocus={handleToggleFocus}
+            />
           ))
         )}
       </div>

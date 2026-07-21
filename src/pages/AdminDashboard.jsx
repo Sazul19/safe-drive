@@ -34,11 +34,14 @@ function useElapsed(createdAt) {
 
 // ── Alert Card ──────────────────────────────────────────────────────────────
 // 🔥 FIX 2: Accept 'isNearest' as a boolean instead of the whole Set object
-const AlertCard = memo(function AlertCard({ a, isNearest, deletedByUid }) {
+const AlertCard = memo(function AlertCard({ a, isNearest, deletedByUid, isFocused, onToggleFocus }) {
   const elapsed = useElapsed(a.createdAt)
 
   return (
-    <div className={`${styles.card} ${a.severity ? styles[a.severity] : ''}`}>
+    <div
+      className={`${styles.card} ${a.severity ? styles[a.severity] : ''}`}
+      style={isFocused ? { outline: '2px solid var(--blue)', outlineOffset: '-1px' } : undefined}
+    >
       <div className={styles.cardTop}>
         <span className={styles.vehicle}>🚗 Smart Vehicle Alert</span>
         <div className={styles.cardMeta}>
@@ -80,6 +83,12 @@ const AlertCard = memo(function AlertCard({ a, isNearest, deletedByUid }) {
         >
           📍 Open in Google Maps →
         </a>
+        <button
+          style={{ padding: '0.4rem 0.85rem', fontSize: '0.78rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: isFocused ? 'var(--blue-bg)' : 'transparent', color: isFocused ? 'var(--blue)' : undefined }}
+          onClick={() => onToggleFocus(a.id)}
+        >
+          {isFocused ? '✖ Show All on Map' : '🎯 Focus on Map'}
+        </button>
         <button
           className={styles.btnDisconnect}
           style={{ padding: '0.4rem 0.85rem', fontSize: '0.78rem', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
@@ -123,7 +132,10 @@ export default function AdminDashboard({ onLogout }) {
   const [units, setUnits]           = useState([])
   const [filters, setFilters]       = useState({ severity: '', sort: 'newest' })
   const [popupAlert, setPopupAlert] = useState(null)
-  
+  // Clicking "Focus on Map" on an alert card filters the map down to just
+  // that incident (and units responding to it) instead of showing everything.
+  const [focusedAlertId, setFocusedAlertId] = useState(null)
+
   const initialLoadRef  = useRef(true)
   const lastAlertIdRef  = useRef(null)
 
@@ -172,8 +184,19 @@ export default function AdminDashboard({ onLogout }) {
     setFilters(prev => ({ ...prev, [key]: val }))
   }
 
+  const handleToggleFocus = (alertId) => {
+    setFocusedAlertId(prev => prev === alertId ? null : alertId)
+  }
+
   const filteredAlerts = applyFilters(alerts, filters, 'admin')
   const nearestUnits = useMemo(() => getNearestAlertIds(units, alerts), [units, alerts]);
+
+  // When an accident is focused, the map shows only that one incident and
+  // only units responding to it. Unfocused, the map keeps showing every
+  // alert regardless of the list's severity/sort filter (unchanged from
+  // before — the map and the filtered list below are independent views).
+  const mapAlerts = focusedAlertId ? alerts.filter(a => a.id === focusedAlertId) : alerts
+  const mapUnits = focusedAlertId ? units.filter(u => u.alertId === focusedAlertId) : units
 
   const totalCount     = alerts.length
   const pendingCount   = alerts.filter(a => a.policeStatus === 'pending' && a.ambulanceStatus === 'pending').length
@@ -209,7 +232,18 @@ export default function AdminDashboard({ onLogout }) {
         </div>
       </div>
 
-      <TrackingMap alerts={alerts} units={units} />
+      <TrackingMap alerts={mapAlerts} units={mapUnits} focusedAlertId={focusedAlertId} />
+      {focusedAlertId && (
+        <div className={styles.hint} style={{ marginTop: '-1.25rem' }}>
+          🎯 Showing 1 of {alerts.length} accidents on the map.
+          <button
+            onClick={() => setFocusedAlertId(null)}
+            style={{ marginLeft: '0.5rem', background: 'transparent', border: 'none', color: 'var(--blue)', cursor: 'pointer', fontWeight: 600, textDecoration: 'underline' }}
+          >
+            Show All
+          </button>
+        </div>
+      )}
       <AnalyticsPanel alerts={alerts} />
 
       <div className={styles.hint}>
@@ -281,6 +315,8 @@ export default function AdminDashboard({ onLogout }) {
               a={a}
               isNearest={nearestUnits.has(a.id)}
               deletedByUid={user?.uid}
+              isFocused={focusedAlertId === a.id}
+              onToggleFocus={handleToggleFocus}
             />
           ))
         )}

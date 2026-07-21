@@ -35,7 +35,11 @@ const icons = {
   alert: createEmojiIcon('💥', '#ef4444', true),
 }
 
-export default function TrackingMap({ alerts = [], units = [] }) {
+const DEFAULT_CENTER = [6.9271, 79.8612]
+const DEFAULT_ZOOM = 13
+const FOCUS_ZOOM = 16
+
+export default function TrackingMap({ alerts = [], units = [], focusedAlertId = null }) {
   const { theme } = useTheme()
   const mapContainerRef = useRef(null)
   const mapRef = useRef(null)
@@ -54,7 +58,7 @@ export default function TrackingMap({ alerts = [], units = [] }) {
     const map = L.map(mapContainerRef.current, {
       zoomControl: false,
       attributionControl: false
-    }).setView([6.9271, 79.8612], 13)
+    }).setView(DEFAULT_CENTER, DEFAULT_ZOOM)
     
     mapRef.current = map
 
@@ -83,6 +87,23 @@ export default function TrackingMap({ alerts = [], units = [] }) {
 
     tileLayerRef.current = layer
   }, [theme])
+
+  // Fly to a single focused accident (see AdminDashboard/PoliceDashboard/
+  // AmbulanceDashboard "Focus on Map" — clicking an alert card filters
+  // `alerts`/`units` down to just that incident and sets this id so the map
+  // also zooms in on it). Clearing focus flies back to the default view.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+
+    if (focusedAlertId) {
+      const target = alerts.find(a => a.id === focusedAlertId)
+      if (target) map.flyTo([target.lat, target.lng], FOCUS_ZOOM, { duration: 0.8 })
+    } else {
+      map.flyTo(DEFAULT_CENTER, DEFAULT_ZOOM, { duration: 0.8 })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusedAlertId])
 
   useEffect(() => {
     const map = mapRef.current
