@@ -143,7 +143,7 @@ export default function ResponderManagement({ onLogout }) {
   }
 
   const handleDeactivate = async (r) => {
-    if (!window.confirm(`Deactivate ${r.displayName || r.email}? They will be signed out of the app immediately and blocked from logging back in until reactivated.`)) return
+    if (!window.confirm(`Deactivate ${r.displayName || r.email}? They'll be blocked from signing back in until reactivated. If they're currently signed in, access is revoked on their next page load, not instantly.`)) return
     setBusyUid(r.uid)
     try {
       await deactivateResponderAccount(r.uid)

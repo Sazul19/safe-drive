@@ -19,5 +19,5 @@ export const auth = getAuth(app);
 
 // Exposed so a secondary app instance can be spun up for admin-side account
 // provisioning (creating Police/Ambulance accounts without disturbing the
-// admin's own signed-in session) — see createResponderAccount() in lib/auth.js.
+// admin's own signed-in session) — see createResponderAccount() in lib/responders.js.
 export { firebaseConfig };

@@ -24,7 +24,7 @@ function ProtectedRoute({ role: requiredRole, children }) {
 }
 
 function AppRoutes() {
-  const { user, role, loading } = useAuth()
+  const { user, role, active, loading } = useAuth()
 
   const handleLogout = () => {
     logOut()
@@ -84,10 +84,10 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
       <Route path="/history" element={
-        user && role ? <History /> : <Navigate to="/" replace />
+        !user ? <Navigate to="/" replace /> : !active ? <Navigate to="/deactivated" replace /> : role ? <History /> : <Navigate to="/" replace />
       } />
       <Route path="/alerts" element={
-        user && role ? <Alerts onLogout={handleLogout} /> : <Navigate to="/" replace />
+        !user ? <Navigate to="/" replace /> : !active ? <Navigate to="/deactivated" replace /> : role ? <Alerts onLogout={handleLogout} /> : <Navigate to="/" replace />
       } />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
