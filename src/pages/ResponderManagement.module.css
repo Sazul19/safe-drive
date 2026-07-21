@@ -1,3 +1,32 @@
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.tabBtn {
+  padding: 0.55rem 1.1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+
+.tabBtn:hover {
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+
+.tabBtnActive {
+  border-color: var(--blue);
+  background: var(--blue-bg);
+  color: var(--blue);
+}
+
 .panel {
   background: var(--card);
   border: 1px solid var(--border);
@@ -46,7 +75,7 @@
 }
 
 .success {
-  margin-top: 1rem;
+  margin-bottom: 1rem;
   padding: 0.6rem 0.9rem;
   border-radius: var(--radius-sm);
   background: var(--green-bg);
@@ -75,6 +104,7 @@
   display: flex;
   gap: 0.75rem;
   margin-bottom: 1rem;
+  flex-wrap: wrap;
 }
 
 .roleOption {
@@ -113,6 +143,8 @@
   background: var(--bg-2);
   color: var(--text-primary);
   font-size: 0.88rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .input:focus {
@@ -157,6 +189,16 @@
   border-radius: var(--radius-sm);
   background: var(--card-hover);
   border: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.rowInactive {
+  opacity: 0.6;
+}
+
+.rowEditing {
+  background: var(--blue-bg);
+  border-color: var(--blue);
 }
 
 .roleBadge {
@@ -174,17 +216,31 @@
   color: var(--green);
 }
 
+.statusBadge {
+  margin-left: 0.5rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: var(--red-bg);
+  color: var(--red);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
 .rowInfo {
   display: flex;
   flex-direction: column;
   flex: 1;
-  min-width: 0;
+  min-width: 160px;
 }
 
 .rowName {
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-primary);
+  display: flex;
+  align-items: center;
 }
 
 .rowEmail {
@@ -199,4 +255,74 @@
   font-size: 0.75rem;
   color: var(--text-muted);
   white-space: nowrap;
+}
+
+.rowActions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.btnGhost {
+  padding: 0.4rem 0.7rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  white-space: nowrap;
+}
+
+.btnGhost:hover:not(:disabled) {
+  border-color: var(--border-hover);
+  background: var(--card-hover);
+  color: var(--text-primary);
+}
+
+.btnGhost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnGhostDanger {
+  composes: btnGhost;
+  color: var(--red);
+  border-color: var(--red-border);
+}
+
+.btnGhostDanger:hover:not(:disabled) {
+  background: var(--red-bg);
+}
+
+.editForm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.editActions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.historyRow {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius-sm);
+  background: var(--card-hover);
+  border: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.historyAction {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  min-width: 110px;
 }

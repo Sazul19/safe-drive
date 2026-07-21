@@ -6,16 +6,19 @@ import Login from './pages/Login'
 import Signup from './pages/Signup'
 import SetRole from './pages/SetRole'
 import AdminDashboard from './pages/AdminDashboard'
+import ResponderManagement from './pages/ResponderManagement'
 import PoliceDashboard from './pages/PoliceDashboard'
 import AmbulanceDashboard from './pages/AmbulanceDashboard'
 import History from './pages/History'
 import UserDashboard from './pages/UserDashboard'
 import Alerts from './pages/Alerts'
+import AccountDeactivated from './pages/AccountDeactivated'
 
 function ProtectedRoute({ role: requiredRole, children }) {
-  const { user, role, loading } = useAuth()
+  const { user, role, active, loading } = useAuth()
   if (loading) return <div className="authLoading">Loading…</div>
   if (!user) return <Navigate to="/login" replace />
+  if (!active) return <Navigate to="/deactivated" replace />
   if (role !== requiredRole) return <Navigate to="/" replace />
   return children
 }
@@ -56,6 +59,14 @@ function AppRoutes() {
         <ProtectedRoute role="admin">
           <AdminDashboard onLogout={handleLogout} />
         </ProtectedRoute>
+      } />
+      <Route path="/admin/responders" element={
+        <ProtectedRoute role="admin">
+          <ResponderManagement onLogout={handleLogout} />
+        </ProtectedRoute>
+      } />
+      <Route path="/deactivated" element={
+        user ? <AccountDeactivated /> : <Navigate to="/login" replace />
       } />
       <Route path="/police" element={
         <ProtectedRoute role="police">

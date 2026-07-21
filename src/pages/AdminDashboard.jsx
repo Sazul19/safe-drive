@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, memo, useMemo } from 'react'
+import { useState, useEffect, useRef, memo, useMemo } from 'react'
 import StatusTimeline from '../components/StatusTimeline'
 import { useAuth } from '../contexts/AuthContext'
 import DashboardLayout from '../components/DashboardLayout'
@@ -8,16 +8,9 @@ import AnalyticsPanel from '../components/AnalyticsPanel'
 import AlertFilters, { applyFilters } from '../components/AlertFilters'
 import { subscribeAlerts, addAlert, deleteAlert, logAlertDeletion, SEVERITY_LABELS } from '../lib/alerts'
 import { subscribeUnitLocations } from '../lib/tracking'
-import {
-  isBLESupported,
-  connectToDevice, disconnectDevice,
-  startLocationWatch, stopLocationWatch, getBestLocation,
-  reverseGeocode,
-} from '../lib/ble'
 import AlertPopup from '../components/AlertPopup'
 import { requestNotificationPermission, showAlertNotification, playAlertSound } from '../lib/notifications'
 import TrackingMap from '../components/TrackingMap'
-import ManageResponders from '../components/ManageResponders'
 import styles from './Dashboard.module.css'
 
 // ── Live elapsed time hook ──────────────────────────────────────────────────
@@ -128,9 +121,6 @@ export default function AdminDashboard({ onLogout }) {
   const { user } = useAuth()
   const [alerts, setAlerts]         = useState([])
   const [units, setUnits]           = useState([])
-  const [bleConnected, setBleConnected] = useState(false)
-  const [bleStatus, setBleStatus]   = useState('')
-  const [gpsStatus, setGpsStatus]   = useState('no GPS')
   const [filters, setFilters]       = useState({ severity: '', sort: 'newest' })
   const [popupAlert, setPopupAlert] = useState(null)
   
@@ -185,77 +175,6 @@ export default function AdminDashboard({ onLogout }) {
   const filteredAlerts = applyFilters(alerts, filters, 'admin')
   const nearestUnits = useMemo(() => getNearestAlertIds(units, alerts), [units, alerts]);
 
-  // ── BLE DATA HANDLER ──────────────────────────────────────────────────────
-  const handleBLEData = useCallback(async (data) => {
-    console.log('✅ FILTERED CRASH received from BLE gate:', data.type, `${(parseFloat(data.magnitude || 0) / 9.81).toFixed(2)}G`);
-    setBleStatus(`Processing ${data.type} alert...`);
-
-    try {
-      let lat = parseFloat(data.lat);
-      let lng = parseFloat(data.lng);
-      const deviceHasFix = data.gps === 'device' && lat !== 0 && lng !== 0;
-      
-      if (!deviceHasFix) {
-        setBleStatus('Acquiring GPS...');
-        const loc = await getBestLocation();
-        lat = loc.lat;
-        lng = loc.lng;
-        if (loc.source === 'fallback') setBleStatus('Using fallback GPS');
-      }
-      
-      setBleStatus('Resolving address...');
-      const realAddress = await reverseGeocode(lat, lng);
-
-      const mag = parseFloat(data.magnitude || data.mag || data.g || 0);
-      const impactG = (mag / 9.81).toFixed(1);
-      const isMajor = data.type === 'MAJOR'; 
-      const severity = isMajor ? 'critical' : 'high'; 
-      const accidentType = isMajor ? 'Major collision (IoT)' : 'Minor collision (IoT)';
-
-      const payload = { 
-        severity, accidentType, lat, lng, 
-        address: realAddress,
-        impactForce: impactG,
-        createdAt: Date.now() 
-      };
-      
-      console.log('📦 SAVING TO FIREBASE:', payload.accidentType);
-
-      setBleStatus('Saving...');
-      await addAlert(payload); 
-      console.log('✅ Saved! Popup will trigger from Firestore listener.');
-      setBleStatus(`✅ ${accidentType} — ${impactG}G`);
-
-    } catch (error) {
-      console.error('❌ Alert failed:', error);
-      setBleStatus(`❌ ${error.message}`);
-    }
-
-    setTimeout(() => setBleStatus(''), 5000);
-  }, []);
-
-  const handleBLEConnect = async () => {
-    try {
-      setBleStatus('Searching for device…')
-      startLocationWatch((loc) => setGpsStatus(`${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}`))
-      const name = await connectToDevice(handleBLEData, () => {
-        setBleConnected(false); setBleStatus('Device disconnected')
-        stopLocationWatch(); setGpsStatus('no GPS')
-      })
-      setBleConnected(true)
-      setBleStatus(`Connected to ${name}`)
-    } catch (err) {
-      stopLocationWatch(); setGpsStatus('no GPS')
-      setBleStatus(err.message || 'Connection failed')
-      setBleConnected(false)
-    }
-  }
-
-  const handleBLEDisconnect = () => {
-    disconnectDevice(); stopLocationWatch()
-    setBleConnected(false); setBleStatus(''); setGpsStatus('no GPS')
-  }
-
   const totalCount     = alerts.length
   const pendingCount   = alerts.filter(a => a.policeStatus === 'pending' && a.ambulanceStatus === 'pending').length
   const respondedCount = alerts.filter(a => a.policeStatus !== 'pending' || a.ambulanceStatus !== 'pending').length
@@ -292,37 +211,12 @@ export default function AdminDashboard({ onLogout }) {
 
       <TrackingMap alerts={alerts} units={units} />
       <AnalyticsPanel alerts={alerts} />
-      <ManageResponders />
 
       <div className={styles.hint}>
         Response status:&nbsp;
         <StatusBadge status="pending" /> &nbsp;·&nbsp;
         <StatusBadge status="en_route" /> &nbsp;·&nbsp;
         <StatusBadge status="arrived" />
-      </div>
-
-      <div className={styles.bleBar}>
-        <div className={styles.bleInfo}>
-          <span className={bleConnected ? styles.bleOn : styles.bleOff}>
-            {bleConnected ? '● ESP32 Connected' : '○ ESP32 Not Connected'}
-          </span>
-          {bleConnected && (
-            <span className={styles.bleMsg}>
-              📍 {gpsStatus === 'no GPS' ? 'Acquiring GPS…' : gpsStatus}
-            </span>
-          )}
-          {bleStatus && <span className={styles.bleMsg}>{bleStatus}</span>}
-        </div>
-        {isBLESupported() ? (
-          <button
-            className={bleConnected ? styles.btnDisconnect : styles.btnConnect}
-            onClick={bleConnected ? handleBLEDisconnect : handleBLEConnect}
-          >
-            {bleConnected ? 'Disconnect' : '📡 Connect ESP32'}
-          </button>
-        ) : (
-          <span className={styles.bleUnsupported}>Web Bluetooth requires Chrome / Edge</span>
-        )}
       </div>
 
       {/* Demo-only test-alert generator — gated behind VITE_ENABLE_SANDBOX so it
@@ -375,7 +269,7 @@ export default function AdminDashboard({ onLogout }) {
           <div className={styles.empty}>
             <span className={styles.emptyIcon}>📡</span>
             <p>{alerts.length === 0
-              ? 'No alerts yet. Click "Simulate Accident Alert" to generate a demo, or connect the IoT hardware.'
+              ? 'No alerts yet. Incidents reported from the field will appear here in real time.'
               : 'No alerts match the current filters.'
             }</p>
           </div>

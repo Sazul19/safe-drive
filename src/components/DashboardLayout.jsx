@@ -128,8 +128,8 @@ export default function DashboardLayout({ title, role, user, onLogout, children 
               <span className={styles.navLabel}>Incidents History</span>
             </Link>
 
-            <Link 
-              to="/alerts" 
+            <Link
+              to="/alerts"
               className={`${styles.navLink} ${isActive('/alerts') ? styles.navLinkActive : ''}`}
               onClick={handleLinkClick}
             >
@@ -137,6 +137,21 @@ export default function DashboardLayout({ title, role, user, onLogout, children 
               <span className={styles.navLabel}>Live Alerts</span>
             </Link>
           </div>
+
+          {role === 'admin' && (
+            <div className={styles.navSection}>
+              <span className={styles.navSectionTitle}>Administration</span>
+
+              <Link
+                to="/admin/responders"
+                className={`${styles.navLink} ${isActive('/admin/responders') ? styles.navLinkActive : ''}`}
+                onClick={handleLinkClick}
+              >
+                <span className={styles.navIcon}>👮</span>
+                <span className={styles.navLabel}>Manage Responders</span>
+              </Link>
+            </div>
+          )}
         </nav>
 
         {/* Theme and Volume Toggles in Sidebar */}
