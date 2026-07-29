@@ -35,22 +35,33 @@ export const SANDBOX_FIXTURES = [
   },
 
   // MINOR_THRESHOLD boundary, approached from above (BVA: at-boundary case).
+  //
+  // simulatable: false — kept documented for the EP/BVA test-design record,
+  // but not wired to a button: its label ("boundary" fixtures fire MINOR by
+  // design even when the label mentions "Major") was found to be confusing
+  // in practice — a "Major boundary" button producing a MINOR alert looked
+  // like a bug ("alerts always show minor"). Only unambiguous MINOR/MAJOR
+  // buttons are exposed in the UI now.
   {
     id: 'MINOR_BOUNDARY_AT',
     label: 'Minor boundary (at threshold)',
     description: `BVA: magnitude exactly at MINOR_THRESHOLD (${MINOR_THRESHOLD}) — the lowest value that must still classify as MINOR (>= is inclusive).`,
     payload: { type: 'MINOR', magnitude: MINOR_THRESHOLD.toFixed(2), gps: 'phone' },
     expected: { severity: 'high', accidentType: 'Minor impact detected' },
+    simulatable: false,
   },
 
   // MAJOR_THRESHOLD boundary, approached from below (BVA: just-under case) —
-  // must NOT classify as MAJOR.
+  // must NOT classify as MAJOR. simulatable: false — see note above
+  // MINOR_BOUNDARY_AT; this is the exact fixture that caused the confusion
+  // (label mentions "Major", payload.type is actually 'MINOR' by design).
   {
     id: 'MAJOR_BOUNDARY_BELOW',
     label: 'Major boundary (just under)',
     description: `BVA: magnitude just below MAJOR_THRESHOLD (${(MAJOR_THRESHOLD - 0.1).toFixed(2)} < ${MAJOR_THRESHOLD}) — must still classify as MINOR, not MAJOR.`,
     payload: { type: 'MINOR', magnitude: (MAJOR_THRESHOLD - 0.1).toFixed(2), gps: 'phone' },
     expected: { severity: 'high', accidentType: 'Minor impact detected' },
+    simulatable: false,
   },
 
   // EC3 interior — representative MAJOR value, comfortably above threshold.
@@ -63,23 +74,28 @@ export const SANDBOX_FIXTURES = [
   },
 
   // MAJOR_THRESHOLD boundary, at the exact value (BVA: at-boundary case).
+  // simulatable: false — see note above MINOR_BOUNDARY_AT; UI now exposes
+  // only one unambiguous MAJOR button (MAJOR_TYPICAL).
   {
     id: 'MAJOR_BOUNDARY_AT',
     label: 'Major boundary (at threshold)',
     description: `BVA: magnitude exactly at MAJOR_THRESHOLD (${MAJOR_THRESHOLD}) — the lowest value that must classify as MAJOR.`,
     payload: { type: 'MAJOR', magnitude: MAJOR_THRESHOLD.toFixed(2), gps: 'phone' },
     expected: { severity: 'critical', accidentType: 'Major collision detected' },
+    simulatable: false,
   },
 
   // EC3 extreme — stress/robustness case, several multiples of threshold
   // (error-guessing technique, ISO 26262 §9, used alongside EP/BVA to
   // cover values a driver test can't safely reproduce by hand).
+  // simulatable: false — see note above MINOR_BOUNDARY_AT.
   {
     id: 'MAJOR_EXTREME',
     label: 'Major impact (extreme)',
     description: `Stress case: ~3x MAJOR_THRESHOLD (${(MAJOR_THRESHOLD * 3).toFixed(2)}) — sanity-checks the upper end of the reported magnitude range.`,
     payload: { type: 'MAJOR', magnitude: (MAJOR_THRESHOLD * 3).toFixed(2), gps: 'phone' },
     expected: { severity: 'critical', accidentType: 'Major collision detected' },
+    simulatable: false,
   },
 
   // Independent-trigger path: gyro alone crosses GYRO_MAJOR_THRESHOLD while
