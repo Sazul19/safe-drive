@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import {
   isBLESupported, connectToDevice, disconnectDevice, getBestLocation, reverseGeocode
@@ -17,6 +17,14 @@ import TestModeBanner from '../components/TestModeBanner'
 // Ambulance dashboards receive it correctly. Writes go to the isolated
 // testAlerts/ path, not the real alerts/ collection — see
 // docs/testing/sandbox-methodology.md. Gated behind the sandbox flag.
+//
+// MINOR events go through the same driver-facing confirmation flow as the
+// real UserDashboard (a countdown sheet with "I'm fine"/"Send alert now"),
+// not an instant write — so this screen exercises the actual UX a driver
+// would see, not just the backend pipeline. MAJOR still fires immediately,
+// matching real behavior (no confirmation step for a major impact).
+
+const COUNTDOWN_SECONDS = 180
 
 const palette = {
   bg: '#070a13',
@@ -66,6 +74,10 @@ export default function SensorTestScreen() {
   const [log, setLog] = useState([])
   const logIdRef = useRef(0)
 
+  // Mirrors UserDashboard's pending-confirmation flow for MINOR events.
+  const [pendingAlert, setPendingAlert] = useState(null) // { logId, payload }
+  const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS)
+
   // Read-only reuse of the same profile/contacts the real UserDashboard
   // saves, so simulated alerts carry realistic medicalProfile/emergencyContacts.
   const profile = loadJSON('safedrive_profile', {})
@@ -81,8 +93,18 @@ export default function SensorTestScreen() {
     setLog(prev => prev.map(e => e.id === id ? { ...e, ...patch } : e))
   }
 
-  // Shared by both real BLE notifications and the simulate buttons, so the
-  // log and Firebase write behave identically regardless of data source.
+  // Actually writes to Firebase — called immediately for MAJOR, or later
+  // (on confirm/timeout/cancel) for MINOR, mirroring UserDashboard's flow.
+  const sendAlert = async (logId, payload) => {
+    try {
+      const alertId = await addTestAlert(payload)
+      updateLog(logId, { sent: true, alertId })
+    } catch (err) {
+      updateLog(logId, { error: err.message || 'Failed to process' })
+    }
+  }
+
+  // Shared by both real BLE notifications and the simulate buttons.
   const handleData = useCallback(async (data, source) => {
     const id = appendLog({ source, raw: data, sent: false })
 
@@ -95,8 +117,6 @@ export default function SensorTestScreen() {
         lat = loc.lat; lng = loc.lng
         address = await reverseGeocode(lat, lng)
       } catch { /* fall through with defaults */ }
-
-      playAlertSound()
 
       const payload = {
         severity: data.type === 'MAJOR' ? 'critical' : 'high',
@@ -111,12 +131,60 @@ export default function SensorTestScreen() {
         emergencyContacts: contacts,
       }
 
-      const alertId = await addTestAlert(payload)
-      updateLog(id, { sent: true, alertId })
+      playAlertSound()
+
+      if (data.type === 'MAJOR') {
+        // Real flow: MAJOR escalates immediately, no confirmation step.
+        await sendAlert(id, payload)
+      } else {
+        // Real flow: MINOR waits for driver confirmation or a 3-minute
+        // countdown timeout — same as UserDashboard's bottom sheet.
+        updateLog(id, { pending: true })
+        setPendingAlert({ logId: id, payload })
+      }
     } catch (err) {
       updateLog(id, { error: err.message || 'Failed to process' })
     }
   }, [user, profile, contacts])
+
+  useEffect(() => {
+    if (!pendingAlert) return
+    setCountdown(COUNTDOWN_SECONDS)
+    const timer = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          setPendingAlert(current => {
+            if (current) sendAlert(current.logId, current.payload)
+            return null
+          })
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [pendingAlert])
+
+  // Repeating siren while awaiting confirmation — same rationale as
+  // UserDashboard: a single burst is easy to miss.
+  useEffect(() => {
+    if (!pendingAlert) return
+    const siren = setInterval(() => playAlertSound(), 5000)
+    return () => clearInterval(siren)
+  }, [pendingAlert])
+
+  const handleConfirmSend = () => {
+    if (!pendingAlert) return
+    sendAlert(pendingAlert.logId, pendingAlert.payload)
+    setPendingAlert(null)
+  }
+
+  const handleCancelPending = () => {
+    if (!pendingAlert) return
+    updateLog(pendingAlert.logId, { pending: false, cancelled: true })
+    setPendingAlert(null)
+  }
 
   const handleConnect = async () => {
     try {
@@ -279,6 +347,10 @@ export default function SensorTestScreen() {
                     <span style={{ color: palette.danger }}>✖ {entry.error}</span>
                   ) : entry.sent ? (
                     <span style={{ color: palette.safe }}>✓ Sent to testAlerts/{entry.alertId ? ` (${entry.alertId})` : ''}</span>
+                  ) : entry.cancelled ? (
+                    <span style={{ color: palette.textMuted }}>Cancelled by driver — never sent</span>
+                  ) : entry.pending ? (
+                    <span style={{ color: palette.warn }}>⏳ Awaiting driver confirmation…</span>
                   ) : (
                     <span style={{ color: palette.textMuted }}>Sending…</span>
                   )}
@@ -289,6 +361,61 @@ export default function SensorTestScreen() {
         )}
       </div>
       </div>
+
+      {/* Real-UI confirmation sheet for MINOR — identical flow to
+          UserDashboard's bottom sheet, so this screen exercises the actual
+          driver-facing UX, not just a backend shortcut. */}
+      {pendingAlert && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+          display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 50,
+        }}>
+          <div style={{
+            background: palette.surface, border: `1px solid ${palette.border}`,
+            borderRadius: '20px 20px 0 0', padding: '24px 20px', width: '100%', maxWidth: '480px',
+            fontFamily: "'DM Sans', 'Inter', system-ui, sans-serif",
+          }}>
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              <div style={{
+                width: '64px', height: '64px', borderRadius: '50%',
+                backgroundColor: palette.warnSoft, display: 'flex',
+                alignItems: 'center', justifyContent: 'center',
+                margin: '0 auto 12px', fontSize: '1.8rem',
+              }}>⚠️</div>
+              <h2 style={{ margin: '0 0 6px', fontSize: '1.3rem', fontWeight: 800, color: palette.warn }}>Impact Detected</h2>
+              <p style={{ margin: 0, color: palette.textMuted, fontSize: '0.9rem' }}>
+                {pendingAlert.payload.impactForce}G at {pendingAlert.payload.address?.split(',')[0] || 'your location'}
+              </p>
+            </div>
+
+            <div style={{ height: '6px', backgroundColor: palette.border, borderRadius: '3px', marginBottom: '6px', overflow: 'hidden' }}>
+              <div style={{
+                height: '100%', borderRadius: '3px',
+                backgroundColor: countdown <= 10 ? palette.danger : palette.warn,
+                width: `${(countdown / COUNTDOWN_SECONDS) * 100}%`,
+                transition: 'width 1s linear',
+              }}/>
+            </div>
+            <p style={{ textAlign: 'center', margin: '0 0 20px', fontSize: '0.85rem', color: palette.textMuted }}>
+              Sending alert in{' '}
+              <strong style={{ color: countdown <= 10 ? palette.danger : palette.text, fontSize: '1rem' }}>
+                {countdown}s
+              </strong>
+            </p>
+
+            <button onClick={handleCancelPending} style={{
+              ...btnStyle(palette.border, 'transparent'), color: palette.text, width: '100%', marginBottom: '10px', padding: '12px',
+            }}>
+              I'm fine — cancel
+            </button>
+            <button onClick={handleConfirmSend} style={{
+              ...btnStyle(palette.danger, palette.danger), color: '#fff', width: '100%', padding: '12px',
+            }}>
+              Send alert now
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
