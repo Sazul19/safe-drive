@@ -1,6 +1,7 @@
-// Persistent visual indicator shown whenever a dashboard is displaying
-// sandbox/simulated data (subscribeAlerts({ includeTest: true })), so it's
-// unambiguous — in the UI and in screenshots/demos — which alerts are real.
+// Persistent visual indicator shown whenever a dashboard's current alert
+// feed contains sandbox/simulated data (any record tagged isTest: true),
+// so it's unambiguous — in the UI and in screenshots/demos — which alerts
+// are real, even though test alerts live in the same alerts/ collection.
 export default function TestModeBanner() {
   return (
     <div style={{

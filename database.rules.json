@@ -4,10 +4,6 @@
       ".read": true,
       ".write": true
     },
-    "testAlerts": {
-      ".read": true,
-      ".write": true
-    },
     "users": {
       "$uid": {
         ".read": "auth != null && (auth.uid == $uid || root.child('users').child(auth.uid).child('role').val() == 'admin')",

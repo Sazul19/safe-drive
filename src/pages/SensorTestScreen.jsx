@@ -14,8 +14,8 @@ import TestModeBanner from '../components/TestModeBanner'
 // lets you fire simulated MINOR/MAJOR events (from the shared fixture set
 // in lib/sandboxFixtures.js) through the same playAlertSound()/addTestAlert()
 // pipeline a real firmware event would use, so you can verify Admin/Police/
-// Ambulance dashboards receive it correctly. Writes go to the isolated
-// testAlerts/ path, not the real alerts/ collection — see
+// Ambulance dashboards receive it correctly. Writes go into the same
+// alerts/ collection as a real event, tagged isTest: true — see
 // docs/testing/sandbox-methodology.md. Gated behind the sandbox flag.
 //
 // MINOR events go through the same driver-facing confirmation flow as the
@@ -212,12 +212,11 @@ export default function SensorTestScreen() {
     handleData(fixture.payload, `simulated:${fixture.id}`)
   }
 
-  // Only fixtures with a real type are directly simulatable here — a
-  // malformed/missing-type payload is meant to test ble.js's own discard
-  // logic in handleChunk(), which this screen bypasses by calling the
-  // handler directly, so it's documented as a fixture but not wired to a
-  // button (see docs/testing/sandbox-methodology.md).
-  const simulatableFixtures = SANDBOX_FIXTURES.filter(f => f.payload.type)
+  // Fixtures marked simulatable: false only exercise firmware-side or
+  // ble.js-parser logic this screen bypasses by calling the data handler
+  // directly — documented in lib/sandboxFixtures.js but not wired to a
+  // button here (see docs/testing/sandbox-methodology.md).
+  const simulatableFixtures = SANDBOX_FIXTURES.filter(f => f.simulatable !== false)
 
   if (!sandboxEnabled) {
     return (
@@ -240,7 +239,7 @@ export default function SensorTestScreen() {
       }}>
       <h1 style={{ fontSize: '1.3rem', fontWeight: 800, margin: '0 0 4px' }}>Sensor Test Screen</h1>
       <p style={{ color: palette.textMuted, fontSize: '0.85rem', margin: '0 0 20px' }}>
-        Diagnostic tool — connects to the real BLE sensor and/or fires simulated events. Both go through the real alert pipeline (sound + isolated testAlerts/ path).
+        Diagnostic tool — connects to the real BLE sensor and/or fires simulated events. Both go through the real alert pipeline (sound + Firebase, tagged isTest: true).
       </p>
 
       {/* Connection controls */}
@@ -346,7 +345,7 @@ export default function SensorTestScreen() {
                   {entry.error ? (
                     <span style={{ color: palette.danger }}>✖ {entry.error}</span>
                   ) : entry.sent ? (
-                    <span style={{ color: palette.safe }}>✓ Sent to testAlerts/{entry.alertId ? ` (${entry.alertId})` : ''}</span>
+                    <span style={{ color: palette.safe }}>✓ Sent to Firebase{entry.alertId ? ` (${entry.alertId})` : ''}</span>
                   ) : entry.cancelled ? (
                     <span style={{ color: palette.textMuted }}>Cancelled by driver — never sent</span>
                   ) : entry.pending ? (
