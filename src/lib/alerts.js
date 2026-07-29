@@ -2,9 +2,17 @@ import { ref, onValue, set, push, get, remove } from 'firebase/database'
 import { db } from '../firebase'
 
 const ALERTS_PATH = 'alerts'
+// Sandbox/simulated alerts (see docs/testing/sandbox-methodology.md) live in
+// a separate DB path so test data never mixes into the real alerts/ node
+// that responders monitor by default. Each record carries isTest: true.
+const TEST_ALERTS_PATH = 'testAlerts'
 
 export function alertsRef() {
   return ref(db, ALERTS_PATH)
+}
+
+export function testAlertsRef() {
+  return ref(db, TEST_ALERTS_PATH)
 }
 
 // Firebase Realtime Database's special `.info/connected` path reflects the
@@ -16,13 +24,41 @@ export function subscribeConnectionState(callback) {
   })
 }
 
-export function subscribeAlerts(callback) {
-  return onValue(alertsRef(), (snapshot) => {
-    const data = snapshot.val()
-    const list = data ? Object.entries(data).map(([id, v]) => ({ id, ...v })) : []
-    list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
-    callback(list)
+function snapshotToList(snapshot) {
+  const data = snapshot.val()
+  return data ? Object.entries(data).map(([id, v]) => ({ id, ...v })) : []
+}
+
+// includeTest: false (default) — real alerts only, matching existing
+// behavior for every current caller. Pass { includeTest: true } to also
+// merge in sandbox-originated alerts (tagged isTest: true on each record),
+// e.g. behind a "Show test alerts" toggle on a dashboard.
+export function subscribeAlerts(callback, { includeTest = false } = {}) {
+  let realList = []
+  let testList = []
+
+  const emit = () => {
+    const merged = includeTest ? [...realList, ...testList] : realList
+    merged.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+    callback(merged)
+  }
+
+  const unsubReal = onValue(alertsRef(), (snapshot) => {
+    realList = snapshotToList(snapshot)
+    emit()
   })
+
+  const unsubTest = includeTest
+    ? onValue(testAlertsRef(), (snapshot) => {
+        testList = snapshotToList(snapshot)
+        emit()
+      })
+    : null
+
+  return () => {
+    unsubReal()
+    if (unsubTest) unsubTest()
+  }
 }
 
 const DEMO_LOCATIONS = [
@@ -42,13 +78,12 @@ const ACCIDENT_TYPES = [
   'Multi-vehicle pile-up',
 ]
 
-export function addAlert(alert) {
-  const r = push(ref(db, ALERTS_PATH))
+function buildAlertPayload(alert) {
   const loc = DEMO_LOCATIONS[Math.floor(Math.random() * DEMO_LOCATIONS.length)]
   const severity = SEVERITIES[Math.floor(Math.random() * SEVERITIES.length)]
   const accidentType = ACCIDENT_TYPES[Math.floor(Math.random() * ACCIDENT_TYPES.length)]
 
-  const payload = {
+  return {
     vehicleId: alert.vehicleId || 'Smart Vehicle',
     lat: alert.lat || loc.lat,
     lng: alert.lng || loc.lng,
@@ -66,12 +101,26 @@ export function addAlert(alert) {
     medicalProfile: alert.medicalProfile || null,
     emergencyContacts: alert.emergencyContacts || [],
   }
-  set(r, payload)
+}
+
+export function addAlert(alert) {
+  const r = push(ref(db, ALERTS_PATH))
+  set(r, buildAlertPayload(alert))
   return r.key
 }
 
-export function updateAlertStatus(alertId, role, status) {
-  const r = ref(db, `${ALERTS_PATH}/${alertId}`)
+// Writes to the isolated testAlerts/ path instead of alerts/ — see
+// docs/testing/sandbox-methodology.md. Marked isTest: true so any UI that
+// merges test data in (via subscribeAlerts({ includeTest: true })) can
+// visually distinguish it from real alerts.
+export function addTestAlert(alert) {
+  const r = push(ref(db, TEST_ALERTS_PATH))
+  set(r, { ...buildAlertPayload(alert), isTest: true })
+  return r.key
+}
+
+export function updateAlertStatus(alertId, role, status, { isTest = false } = {}) {
+  const r = ref(db, `${isTest ? TEST_ALERTS_PATH : ALERTS_PATH}/${alertId}`)
   return get(r).then((snapshot) => {
     const data = snapshot.val()
     if (!data) throw new Error('Alert not found')
@@ -104,7 +153,7 @@ export const SEVERITY_LABELS = {
   low: '🟢 Low',
 }
 
-export function deleteAlert(alertId) {
-  const r = ref(db, `${ALERTS_PATH}/${alertId}`)
+export function deleteAlert(alertId, { isTest = false } = {}) {
+  const r = ref(db, `${isTest ? TEST_ALERTS_PATH : ALERTS_PATH}/${alertId}`)
   return remove(r)
 }

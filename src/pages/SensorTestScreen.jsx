@@ -3,16 +3,20 @@ import { useAuth } from '../contexts/AuthContext'
 import {
   isBLESupported, connectToDevice, disconnectDevice, getBestLocation, reverseGeocode
 } from '../lib/ble'
-import { addAlert } from '../lib/alerts'
+import { addTestAlert } from '../lib/alerts'
 import { playAlertSound } from '../lib/notifications'
 import { isSandboxEnabled, setSandboxEnabled } from '../lib/sandbox'
+import { SANDBOX_FIXTURES } from '../lib/sandboxFixtures'
+import TestModeBanner from '../components/TestModeBanner'
 
 // Standalone diagnostic screen — not linked from any nav, reached by typing
 // the URL directly. Shows the raw BLE data stream (real or simulated) and
-// lets you fire simulated MINOR/MAJOR events through the exact same
-// addAlert()/playAlertSound() pipeline a real firmware event would use, so
-// you can verify Admin/Police/Ambulance dashboards receive it correctly.
-// Gated behind VITE_ENABLE_SANDBOX, same as the other test tooling.
+// lets you fire simulated MINOR/MAJOR events (from the shared fixture set
+// in lib/sandboxFixtures.js) through the same playAlertSound()/addTestAlert()
+// pipeline a real firmware event would use, so you can verify Admin/Police/
+// Ambulance dashboards receive it correctly. Writes go to the isolated
+// testAlerts/ path, not the real alerts/ collection — see
+// docs/testing/sandbox-methodology.md. Gated behind the sandbox flag.
 
 const palette = {
   bg: '#070a13',
@@ -107,7 +111,7 @@ export default function SensorTestScreen() {
         emergencyContacts: contacts,
       }
 
-      const alertId = await addAlert(payload)
+      const alertId = await addTestAlert(payload)
       updateLog(id, { sent: true, alertId })
     } catch (err) {
       updateLog(id, { error: err.message || 'Failed to process' })
@@ -135,9 +139,16 @@ export default function SensorTestScreen() {
     setStatus('')
   }
 
-  const simulate = (type) => {
-    handleData({ type, magnitude: type === 'MAJOR' ? '38.45' : '22.10', gps: 'phone' }, 'simulated')
+  const simulate = (fixture) => {
+    handleData(fixture.payload, `simulated:${fixture.id}`)
   }
+
+  // Only fixtures with a real type are directly simulatable here — a
+  // malformed/missing-type payload is meant to test ble.js's own discard
+  // logic in handleChunk(), which this screen bypasses by calling the
+  // handler directly, so it's documented as a fixture but not wired to a
+  // button (see docs/testing/sandbox-methodology.md).
+  const simulatableFixtures = SANDBOX_FIXTURES.filter(f => f.payload.type)
 
   if (!sandboxEnabled) {
     return (
@@ -151,14 +162,16 @@ export default function SensorTestScreen() {
   }
 
   return (
-    <div style={{
-      minHeight: '100dvh', background: palette.bg, color: palette.text,
-      fontFamily: "'DM Sans', 'Inter', system-ui, sans-serif",
-      maxWidth: '600px', margin: '0 auto', padding: '20px 16px 60px',
-    }}>
+    <div style={{ minHeight: '100dvh', background: palette.bg }}>
+      <TestModeBanner />
+      <div style={{
+        color: palette.text,
+        fontFamily: "'DM Sans', 'Inter', system-ui, sans-serif",
+        maxWidth: '600px', margin: '0 auto', padding: '20px 16px 60px',
+      }}>
       <h1 style={{ fontSize: '1.3rem', fontWeight: 800, margin: '0 0 4px' }}>Sensor Test Screen</h1>
       <p style={{ color: palette.textMuted, fontSize: '0.85rem', margin: '0 0 20px' }}>
-        Diagnostic tool — connects to the real BLE sensor and/or fires simulated events. Both go through the real alert pipeline (sound + Firebase), tagged "(TEST)".
+        Diagnostic tool — connects to the real BLE sensor and/or fires simulated events. Both go through the real alert pipeline (sound + isolated testAlerts/ path).
       </p>
 
       {/* Connection controls */}
@@ -189,16 +202,26 @@ export default function SensorTestScreen() {
         )}
       </div>
 
-      {/* Simulate controls */}
+      {/* Simulate controls — driven by the shared fixture set */}
       <div style={{ background: palette.surface, border: `1px solid ${palette.border}`, borderRadius: '14px', padding: '16px', marginBottom: '20px' }}>
-        <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '12px' }}>Simulate</div>
+        <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '4px' }}>Simulate</div>
+        <p style={{ color: palette.textMuted, fontSize: '0.78rem', margin: '0 0 12px' }}>
+          Scenarios from lib/sandboxFixtures.js — each fires the exact same payload every time, for repeatable testing.
+        </p>
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          <button style={btnStyle(palette.warn, palette.warnSoft)} onClick={() => simulate('MINOR')}>
-            ⏳ Simulate Minor
-          </button>
-          <button style={btnStyle(palette.danger, palette.dangerSoft)} onClick={() => simulate('MAJOR')}>
-            🚨 Simulate Major
-          </button>
+          {simulatableFixtures.map(fixture => {
+            const isMajor = fixture.payload.type === 'MAJOR'
+            return (
+              <button
+                key={fixture.id}
+                title={fixture.description}
+                style={btnStyle(isMajor ? palette.danger : palette.warn, isMajor ? palette.dangerSoft : palette.warnSoft)}
+                onClick={() => simulate(fixture)}
+              >
+                {isMajor ? '🚨' : '⏳'} {fixture.label}
+              </button>
+            )
+          })}
         </div>
       </div>
 
@@ -245,7 +268,7 @@ export default function SensorTestScreen() {
                   {entry.error ? (
                     <span style={{ color: palette.danger }}>✖ {entry.error}</span>
                   ) : entry.sent ? (
-                    <span style={{ color: palette.safe }}>✓ Sent to Firebase{entry.alertId ? ` (${entry.alertId})` : ''}</span>
+                    <span style={{ color: palette.safe }}>✓ Sent to testAlerts/{entry.alertId ? ` (${entry.alertId})` : ''}</span>
                   ) : (
                     <span style={{ color: palette.textMuted }}>Sending…</span>
                   )}
@@ -254,6 +277,7 @@ export default function SensorTestScreen() {
             ))}
           </div>
         )}
+      </div>
       </div>
     </div>
   )

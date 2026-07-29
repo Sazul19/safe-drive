@@ -11,6 +11,7 @@ import { subscribeUnitLocations } from '../lib/tracking'
 import AlertPopup from '../components/AlertPopup'
 import { requestNotificationPermission, showAlertNotification, playAlertSound } from '../lib/notifications'
 import { isSandboxEnabled } from '../lib/sandbox'
+import TestModeBanner from '../components/TestModeBanner'
 import TrackingMap from '../components/TrackingMap'
 import styles from './Dashboard.module.css'
 
@@ -99,7 +100,7 @@ const AlertCard = memo(function AlertCard({ a, isNearest, deletedByUid, isFocuse
               // trail for a permanently-destructive action on an incident record.
               logAlertDeletion(a.id, deletedByUid, a)
                 .catch(console.error)
-                .finally(() => deleteAlert(a.id).catch(console.error))
+                .finally(() => deleteAlert(a.id, { isTest: a.isTest }).catch(console.error))
             }
           }}
         >
@@ -136,6 +137,9 @@ export default function AdminDashboard({ onLogout }) {
   // Clicking "Focus on Map" on an alert card filters the map down to just
   // that incident (and units responding to it) instead of showing everything.
   const [focusedAlertId, setFocusedAlertId] = useState(null)
+  // Off by default so sandbox/simulated data (see lib/sandboxFixtures.js)
+  // never mixes into the real feed unless explicitly opted into.
+  const [showTestAlerts, setShowTestAlerts] = useState(false)
 
   const initialLoadRef  = useRef(true)
   const lastAlertIdRef  = useRef(null)
@@ -144,6 +148,12 @@ export default function AdminDashboard({ onLogout }) {
 
   // ── Firestore real-time subscription ───────────────────────────────────────
   useEffect(() => {
+    // Toggling "Show test alerts" re-subscribes with a different merged
+    // list — treat that first callback as a fresh initial load too, so
+    // flipping the toggle doesn't spuriously pop up/sound for whatever
+    // happens to be newest in the newly-merged list.
+    initialLoadRef.current = true
+
     const unsubAlerts = subscribeAlerts((list) => {
       // 🔥 FIX 1: ROBUST SORTING
       // Safely extracts time whether it's a Number, String, or Firestore Timestamp object.
@@ -175,11 +185,11 @@ export default function AdminDashboard({ onLogout }) {
           showAlertNotification(newestAlert);
         }
       }
-    });
-    
+    }, { includeTest: showTestAlerts });
+
     const unsubUnits = subscribeUnitLocations(setUnits);
     return () => { unsubAlerts(); unsubUnits(); };
-  }, []);
+  }, [showTestAlerts]);
 
   const handleFilterChange = (key, val) => {
     setFilters(prev => ({ ...prev, [key]: val }))
@@ -206,6 +216,13 @@ export default function AdminDashboard({ onLogout }) {
 
   return (
     <DashboardLayout title="Monitor Response" role="admin" user={user} onLogout={onLogout}>
+      {showTestAlerts && <TestModeBanner />}
+      {isSandboxEnabled() && (
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '0 0 0.75rem', cursor: 'pointer' }}>
+          <input type="checkbox" checked={showTestAlerts} onChange={(e) => setShowTestAlerts(e.target.checked)} />
+          Show test alerts (from Sensor Test Screen)
+        </label>
+      )}
       {popupAlert && (
         <AlertPopup
           alert={popupAlert}

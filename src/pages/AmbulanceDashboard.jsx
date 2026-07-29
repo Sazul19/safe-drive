@@ -11,6 +11,8 @@ import { subscribeAlerts, updateAlertStatus } from '../lib/alerts'
 import { requestNotificationPermission, showAlertNotification, playAlertSound } from '../lib/notifications'
 import { updateUnitLocation, subscribeUnitLocations } from '../lib/tracking'
 import { startLocationWatch, stopLocationWatch } from '../lib/ble'
+import { isSandboxEnabled } from '../lib/sandbox'
+import TestModeBanner from '../components/TestModeBanner'
 import TrackingMap from '../components/TrackingMap'
 import styles from './Dashboard.module.css'
 
@@ -145,6 +147,7 @@ export default function AmbulanceDashboard({ onLogout }) {
   // Clicking "Focus on Map" on an alert card filters the map down to just
   // that incident (and units responding to it) instead of showing everything.
   const [focusedAlertId, setFocusedAlertId] = useState(null)
+  const [showTestAlerts, setShowTestAlerts] = useState(false)
   const prevCountRef    = useRef(0)
   const initialLoadRef  = useRef(true)
   const simPosRef = useRef(null)
@@ -179,6 +182,12 @@ export default function AmbulanceDashboard({ onLogout }) {
   }, [])
 
   useEffect(() => {
+    // Toggling "Show test alerts" re-subscribes with a different merged
+    // list — reset the counters so that first callback doesn't spuriously
+    // pop up/sound for whatever's newest in the newly-merged list.
+    initialLoadRef.current = true
+    prevCountRef.current = 0
+
     const unsubAlerts = subscribeAlerts((list) => {
       const prev = prevCountRef.current
       setAlerts(list)
@@ -190,10 +199,10 @@ export default function AmbulanceDashboard({ onLogout }) {
         showAlertNotification(list[0])
       }
       prevCountRef.current = list.length
-    })
+    }, { includeTest: showTestAlerts })
     const unsubUnits = subscribeUnitLocations(setUnits)
     return () => { unsubAlerts(); unsubUnits() }
-  }, [])
+  }, [showTestAlerts])
 
   // Location tracking — uses real device GPS when available (realPosRef),
   // otherwise falls back to the simulated random-walk/interpolation so the
@@ -232,7 +241,7 @@ export default function AmbulanceDashboard({ onLogout }) {
         if (dist <= 0.001) {
           if (!real) { state.lat = targetLat; state.lng = targetLng }
           // Transition status to arrived automatically
-          updateAlertStatus(activeAlert.id, 'ambulance', 'arrived').catch(console.error)
+          updateAlertStatus(activeAlert.id, 'ambulance', 'arrived', { isTest: activeAlert.isTest }).catch(console.error)
           // Lock final coordinates in db
           updateUnitLocation(user.uid, 'ambulance', state.lat, state.lng, activeAlert.id, state.startLat, state.startLng)
         } else {
@@ -276,7 +285,8 @@ export default function AmbulanceDashboard({ onLogout }) {
   const handleFilterChange = (key, val) => setFilters(prev => ({ ...prev, [key]: val }))
 
   const setStatus = (alertId, status) => {
-    updateAlertStatus(alertId, 'ambulance', status).catch(console.error)
+    const alert = alerts.find(a => a.id === alertId)
+    updateAlertStatus(alertId, 'ambulance', status, { isTest: alert?.isTest }).catch(console.error)
   }
 
   const handleToggleFocus = (alertId) => {
@@ -297,6 +307,13 @@ export default function AmbulanceDashboard({ onLogout }) {
 
   return (
     <DashboardLayout title="Emergency Alerts" role="ambulance" user={user} onLogout={onLogout}>
+      {showTestAlerts && <TestModeBanner />}
+      {isSandboxEnabled() && (
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '0 0 0.75rem', cursor: 'pointer' }}>
+          <input type="checkbox" checked={showTestAlerts} onChange={(e) => setShowTestAlerts(e.target.checked)} />
+          Show test alerts (from Sensor Test Screen)
+        </label>
+      )}
       {popupAlert && (
         <AlertPopup
           alert={popupAlert}
