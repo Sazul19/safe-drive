@@ -62,7 +62,7 @@ function AlertCard({ a, index, onStatusChange, isFocused, onToggleFocus }) {
       {/* Minor alert escalation countdown */}
       <EscalationTimer createdAt={a.createdAt} accidentType={a.accidentType} />
 
-      {a.impactForce && <ImpactGauge gForce={a.impactForce} />}
+      {a.impactForce && <ImpactGauge gForce={a.impactForce} severity={a.severity} />}
 
       <StatusTimeline status={a.policeStatus} />
       <p className={styles.time}>{new Date(a.createdAt).toLocaleString()}</p>

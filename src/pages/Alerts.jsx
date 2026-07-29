@@ -64,7 +64,7 @@ const AlertCard = memo(function AlertCard({ a, index, role, onStatusChange }) {
       {/* Escalation countdown timer */}
       <EscalationTimer createdAt={a.createdAt} accidentType={a.accidentType} />
 
-      {a.impactForce && <ImpactGauge gForce={a.impactForce} />}
+      {a.impactForce && <ImpactGauge gForce={a.impactForce} severity={a.severity} />}
 
       {/* Admin view: shows Police & Ambulance timelines */}
       {role === 'admin' && (

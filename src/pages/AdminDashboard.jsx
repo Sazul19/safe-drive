@@ -62,7 +62,7 @@ const AlertCard = memo(function AlertCard({ a, isNearest, deletedByUid, isFocuse
 
       <p className={styles.address}>📍 {a.address}</p>
 
-      {a.impactForce && <ImpactGauge gForce={a.impactForce} />}
+      {a.impactForce && <ImpactGauge gForce={a.impactForce} severity={a.severity} />}
 
       <div className={styles.indicators}>
         <div className={styles.indicator}>
