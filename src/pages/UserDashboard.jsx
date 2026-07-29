@@ -6,6 +6,7 @@ import {
 } from '../lib/ble'
 import { addAlert } from '../lib/alerts'
 import { playAlertSound } from '../lib/notifications'
+import { isSandboxEnabled } from '../lib/sandbox'
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
 const COUNTDOWN_SECONDS = 180
@@ -616,7 +617,7 @@ export default function UserDashboard({ onLogout }) {
                   </p>
                 )}
 
-                {import.meta.env.VITE_ENABLE_SANDBOX === 'true' && (
+                {isSandboxEnabled() && (
                   <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: `1px dashed ${palette.border}` }}>
                     <div style={{ ...S.label, marginBottom: '10px' }}>Test without hardware</div>
                     <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -732,7 +733,7 @@ export default function UserDashboard({ onLogout }) {
 
                 {/* Test controls — stay reachable after simulating a connection, gated
                     the same way as the disconnected screen's sandbox panel. */}
-                {import.meta.env.VITE_ENABLE_SANDBOX === 'true' && (systemStatus === 'idle' || systemStatus === 'cancelled') && (
+                {isSandboxEnabled() && (systemStatus === 'idle' || systemStatus === 'cancelled') && (
                   <div style={{ ...S.card, marginTop: '8px', borderStyle: 'dashed' }}>
                     <div style={{ ...S.label, marginBottom: '10px' }}>Test without hardware</div>
                     <div style={{ display: 'flex', gap: '10px' }}>

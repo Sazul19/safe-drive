@@ -10,6 +10,7 @@ import { subscribeAlerts, addAlert, deleteAlert, logAlertDeletion, SEVERITY_LABE
 import { subscribeUnitLocations } from '../lib/tracking'
 import AlertPopup from '../components/AlertPopup'
 import { requestNotificationPermission, showAlertNotification, playAlertSound } from '../lib/notifications'
+import { isSandboxEnabled } from '../lib/sandbox'
 import TrackingMap from '../components/TrackingMap'
 import styles from './Dashboard.module.css'
 
@@ -257,7 +258,7 @@ export default function AdminDashboard({ onLogout }) {
           doesn't ship live to real Police/Ambulance dashboards by default.
           Set VITE_ENABLE_SANDBOX=true in the deployment env when actually
           running a live demo. See docs/features/admin-dashboard.md §5. */}
-      {import.meta.env.VITE_ENABLE_SANDBOX === 'true' && (
+      {isSandboxEnabled() && (
         <div className={styles.bleBar} style={{ marginTop: '0px', marginBottom: '2rem', background: 'rgba(59, 130, 246, 0.05)', borderColor: 'rgba(59, 130, 246, 0.2)' }}>
           <div className={styles.bleInfo}>
             <span style={{ color: 'var(--blue)', fontWeight: '700', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>

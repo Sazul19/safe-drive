@@ -5,6 +5,7 @@ import {
 } from '../lib/ble'
 import { addAlert } from '../lib/alerts'
 import { playAlertSound } from '../lib/notifications'
+import { isSandboxEnabled, setSandboxEnabled } from '../lib/sandbox'
 
 // Standalone diagnostic screen — not linked from any nav, reached by typing
 // the URL directly. Shows the raw BLE data stream (real or simulated) and
@@ -49,7 +50,12 @@ function loadJSON(key, fallback) {
 
 export default function SensorTestScreen() {
   const { user } = useAuth()
-  const sandboxEnabled = import.meta.env.VITE_ENABLE_SANDBOX === 'true'
+  const [sandboxEnabled, setSandboxEnabledState] = useState(isSandboxEnabled())
+
+  const handleEnableSandbox = () => {
+    setSandboxEnabled(true)
+    setSandboxEnabledState(true)
+  }
 
   const [connected, setConnected] = useState(false)
   const [status, setStatus] = useState('')
@@ -135,8 +141,11 @@ export default function SensorTestScreen() {
 
   if (!sandboxEnabled) {
     return (
-      <div style={{ minHeight: '100dvh', background: palette.bg, color: palette.text, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', 'Inter', system-ui, sans-serif" }}>
-        <p style={{ color: palette.textMuted }}>Sandbox testing is disabled (VITE_ENABLE_SANDBOX is not set).</p>
+      <div style={{ minHeight: '100dvh', background: palette.bg, color: palette.text, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px', fontFamily: "'DM Sans', 'Inter', system-ui, sans-serif", padding: '20px', textAlign: 'center' }}>
+        <p style={{ color: palette.textMuted, margin: 0 }}>Sandbox testing is disabled on this device.</p>
+        <button style={btnStyle(palette.primary, palette.primarySoft)} onClick={handleEnableSandbox}>
+          Enable Sandbox Mode
+        </button>
       </div>
     )
   }
