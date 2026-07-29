@@ -140,6 +140,7 @@ export default function SensorTestScreen() {
   }
 
   const simulate = (fixture) => {
+    if (!connected) return // guard against a stale/bypassed disabled state
     handleData(fixture.payload, `simulated:${fixture.id}`)
   }
 
@@ -197,16 +198,20 @@ export default function SensorTestScreen() {
 
         {!isBLESupported() && (
           <p style={{ marginTop: '10px', fontSize: '0.78rem', color: palette.danger }}>
-            Web Bluetooth not supported on this browser — simulate buttons below still work.
+            Web Bluetooth not supported on this browser — connecting (and therefore simulation) isn't possible here.
           </p>
         )}
       </div>
 
-      {/* Simulate controls — driven by the shared fixture set */}
+      {/* Simulate controls — driven by the shared fixture set. Gated behind
+          a real BLE connection: this screen validates the pipeline once a
+          genuine device session is active, not as a hardware-free shortcut. */}
       <div style={{ background: palette.surface, border: `1px solid ${palette.border}`, borderRadius: '14px', padding: '16px', marginBottom: '20px' }}>
         <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '4px' }}>Simulate</div>
         <p style={{ color: palette.textMuted, fontSize: '0.78rem', margin: '0 0 12px' }}>
-          Scenarios from lib/sandboxFixtures.js — each fires the exact same payload every time, for repeatable testing.
+          {connected
+            ? 'Scenarios from lib/sandboxFixtures.js — each fires the exact same payload every time, for repeatable testing.'
+            : 'Connect to the sensor above first — simulation is disabled until a device is connected.'}
         </p>
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           {simulatableFixtures.map(fixture => {
@@ -214,8 +219,13 @@ export default function SensorTestScreen() {
             return (
               <button
                 key={fixture.id}
-                title={fixture.description}
-                style={btnStyle(isMajor ? palette.danger : palette.warn, isMajor ? palette.dangerSoft : palette.warnSoft)}
+                title={connected ? fixture.description : 'Connect to the sensor first'}
+                disabled={!connected}
+                style={{
+                  ...btnStyle(isMajor ? palette.danger : palette.warn, isMajor ? palette.dangerSoft : palette.warnSoft),
+                  opacity: connected ? 1 : 0.4,
+                  cursor: connected ? 'pointer' : 'not-allowed',
+                }}
                 onClick={() => simulate(fixture)}
               >
                 {isMajor ? '🚨' : '⏳'} {fixture.label}
