@@ -11,6 +11,7 @@ import PoliceDashboard from './pages/PoliceDashboard'
 import AmbulanceDashboard from './pages/AmbulanceDashboard'
 import History from './pages/History'
 import UserDashboard from './pages/UserDashboard'
+import SensorTestScreen from './pages/SensorTestScreen'
 import Alerts from './pages/Alerts'
 import AccountDeactivated from './pages/AccountDeactivated'
 
@@ -81,6 +82,11 @@ function AppRoutes() {
       <Route path="/user" element={
         <ProtectedRoute role="user">
           <UserDashboard onLogout={handleLogout} />
+        </ProtectedRoute>
+      } />
+      <Route path="/user/sensor-test" element={
+        <ProtectedRoute role="user">
+          <SensorTestScreen />
         </ProtectedRoute>
       } />
       <Route path="/history" element={

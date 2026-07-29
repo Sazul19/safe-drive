@@ -358,6 +358,15 @@ export default function UserDashboard({ onLogout }) {
     return () => clearInterval(timer)
   }, [pendingAlert])
 
+  // ── Repeating siren while a minor alert is awaiting confirmation ──────────
+  // A single burst is easy to miss — keep sounding every 5s for the full
+  // 3-minute countdown window until the driver responds or it auto-escalates.
+  useEffect(() => {
+    if (!pendingAlert) return
+    const siren = setInterval(() => playAlertSound(), 5000)
+    return () => clearInterval(siren)
+  }, [pendingAlert])
+
   // ── Continuous Location Tracking ───────────────────────────────────────────
   useEffect(() => {
     if (!bleConnected) return
