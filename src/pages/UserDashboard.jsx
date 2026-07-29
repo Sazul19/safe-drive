@@ -6,7 +6,6 @@ import {
 } from '../lib/ble'
 import { addAlert } from '../lib/alerts'
 import { playAlertSound } from '../lib/notifications'
-import { isSandboxEnabled } from '../lib/sandbox'
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
 const COUNTDOWN_SECONDS = 180
@@ -495,30 +494,6 @@ export default function UserDashboard({ onLogout }) {
     setBleConnected(false); setBleStatus(''); setLastDataTime(null)
   }
 
-  // Dev/demo aids — simulate the sensor without real hardware, so the full
-  // "connected" production UI (location, sensor health, SOS button) and the
-  // minor/major confirmation flow can both be tested standalone. Gated
-  // behind VITE_ENABLE_SANDBOX, same pattern as Admin's Presentation
-  // Sandbox (see docs/features/admin-dashboard.md §5) — hidden by default
-  // in every build, including production.
-  const handleTestConnect = () => {
-    setBleStatus('')
-    setBleConnected(true)
-    setLastDataTime(Date.now())
-  }
-
-  const handleTestAlert = (type) => {
-    // A real crash alert only ever happens while connected — simulate that
-    // too, so the crash popup appears over the actual production dashboard
-    // (location/sensor cards) instead of the disconnected placeholder screen.
-    handleTestConnect()
-    handleBLEData({
-      type,
-      magnitude: type === 'MAJOR' ? '38.45' : '22.10',
-      gps: 'phone',
-    })
-  }
-
   // ── Contact CRUD ───────────────────────────────────────────────────────────
   const saveContact = (contact) => {
     if (editingContact !== null && editingContact.index !== undefined) {
@@ -616,35 +591,6 @@ export default function UserDashboard({ onLogout }) {
                     Bluetooth is not supported on this browser. Try Chrome on Android.
                   </p>
                 )}
-
-                {isSandboxEnabled() && (
-                  <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: `1px dashed ${palette.border}` }}>
-                    <div style={{ ...S.label, marginBottom: '10px' }}>Test without hardware</div>
-                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                      <button
-                        style={{ ...S.btnOutline, width: 'auto', padding: '10px 18px' }}
-                        onClick={handleTestConnect}
-                      >
-                        📡 Simulate Connect
-                      </button>
-                      <button
-                        style={{ ...S.btnOutline, width: 'auto', padding: '10px 18px', borderColor: palette.warn, color: palette.warn }}
-                        onClick={() => handleTestAlert('MINOR')}
-                      >
-                        ⏳ Simulate Minor
-                      </button>
-                      <button
-                        style={{ ...S.btnOutline, width: 'auto', padding: '10px 18px', borderColor: palette.danger, color: palette.danger }}
-                        onClick={() => handleTestAlert('MAJOR')}
-                      >
-                        🚨 Simulate Major
-                      </button>
-                    </div>
-                    <p style={{ margin: '10px 0 0', fontSize: '0.78rem', color: palette.textMuted }}>
-                      "Simulate Connect" shows the real connected dashboard UI (location, sensor status, SOS button) exactly as it appears in production — no hardware needed.
-                    </p>
-                  </div>
-                )}
               </div>
             )}
 
@@ -731,27 +677,6 @@ export default function UserDashboard({ onLogout }) {
                   </button>
                 )}
 
-                {/* Test controls — stay reachable after simulating a connection, gated
-                    the same way as the disconnected screen's sandbox panel. */}
-                {isSandboxEnabled() && (systemStatus === 'idle' || systemStatus === 'cancelled') && (
-                  <div style={{ ...S.card, marginTop: '8px', borderStyle: 'dashed' }}>
-                    <div style={{ ...S.label, marginBottom: '10px' }}>Test without hardware</div>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <button
-                        style={{ ...S.btnOutline, borderColor: palette.warn, color: palette.warn }}
-                        onClick={() => handleTestAlert('MINOR')}
-                      >
-                        ⏳ Simulate Minor
-                      </button>
-                      <button
-                        style={{ ...S.btnOutline, borderColor: palette.danger, color: palette.danger }}
-                        onClick={() => handleTestAlert('MAJOR')}
-                      >
-                        🚨 Simulate Major
-                      </button>
-                    </div>
-                  </div>
-                )}
               </>
             )}
           </>

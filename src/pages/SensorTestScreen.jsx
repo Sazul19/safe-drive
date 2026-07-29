@@ -125,8 +125,13 @@ export default function SensorTestScreen() {
         createdAt: Date.now(),
         vehicleId: (user?.uid || 'unknown') + ' (TEST)',
         impactForce: impactG,
+        // Firebase's set() rejects any payload containing `undefined` —
+        // profile fields are undefined (not null) when no medical profile
+        // has ever been saved, so default each one explicitly.
         medicalProfile: {
-          bloodType: profile.bloodType, allergies: profile.allergies, conditions: profile.conditions,
+          bloodType: profile.bloodType ?? null,
+          allergies: profile.allergies ?? null,
+          conditions: profile.conditions ?? null,
         },
         emergencyContacts: contacts,
       }

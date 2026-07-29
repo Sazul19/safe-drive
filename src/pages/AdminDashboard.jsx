@@ -6,11 +6,10 @@ import StatusBadge from '../components/StatusBadge'
 import ImpactGauge from '../components/ImpactGauge'
 import AnalyticsPanel from '../components/AnalyticsPanel'
 import AlertFilters, { applyFilters } from '../components/AlertFilters'
-import { subscribeAlerts, addAlert, deleteAlert, logAlertDeletion, SEVERITY_LABELS } from '../lib/alerts'
+import { subscribeAlerts, deleteAlert, logAlertDeletion, SEVERITY_LABELS } from '../lib/alerts'
 import { subscribeUnitLocations } from '../lib/tracking'
 import AlertPopup from '../components/AlertPopup'
 import { requestNotificationPermission, showAlertNotification, playAlertSound } from '../lib/notifications'
-import { isSandboxEnabled } from '../lib/sandbox'
 import TestModeBanner from '../components/TestModeBanner'
 import TrackingMap from '../components/TrackingMap'
 import styles from './Dashboard.module.css'
@@ -255,43 +254,6 @@ export default function AdminDashboard({ onLogout }) {
         <StatusBadge status="en_route" /> &nbsp;·&nbsp;
         <StatusBadge status="arrived" />
       </div>
-
-      {/* Demo-only test-alert generator — gated behind VITE_ENABLE_SANDBOX so it
-          doesn't ship live to real Police/Ambulance dashboards by default.
-          Set VITE_ENABLE_SANDBOX=true in the deployment env when actually
-          running a live demo. See docs/features/admin-dashboard.md §5. */}
-      {isSandboxEnabled() && (
-        <div className={styles.bleBar} style={{ marginTop: '0px', marginBottom: '2rem', background: 'rgba(59, 130, 246, 0.05)', borderColor: 'rgba(59, 130, 246, 0.2)' }}>
-          <div className={styles.bleInfo}>
-            <span style={{ color: 'var(--blue)', fontWeight: '700', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              💡 Presentation Sandbox
-            </span>
-            <span className={styles.bleMsg}>Simulate IoT alert scenarios for live demonstrations</span>
-          </div>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <button
-              className={styles.btnConnect}
-              style={{ background: 'linear-gradient(135deg, var(--red) 0%, var(--red-deep) 100%)', boxShadow: 'none', border: 'none' }}
-              onClick={() => addAlert({
-                severity: 'critical', accidentType: 'Major collision (Simulated)', impactForce: '9.4', speed: 82,
-                lat: 6.9271, lng: 79.8612, address: 'Simulated Location', createdAt: Date.now()
-              })}
-            >
-              💥 Test Major Accident
-            </button>
-            <button
-              className={styles.btnConnect}
-              style={{ background: 'linear-gradient(135deg, var(--amber) 0%, var(--amber-dark) 100%)', boxShadow: 'none', border: 'none' }}
-              onClick={() => addAlert({
-                severity: 'high', accidentType: 'Minor collision (Simulated)', impactForce: '3.2', speed: 28,
-                lat: 6.9271, lng: 79.8612, address: 'Simulated Location', createdAt: Date.now()
-              })}
-            >
-              ⏳ Test Minor Accident
-            </button>
-          </div>
-        </div>
-      )}
 
       <AlertFilters
         filters={filters}
