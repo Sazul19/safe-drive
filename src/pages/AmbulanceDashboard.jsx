@@ -11,18 +11,12 @@ import { subscribeAlerts, updateAlertStatus } from '../lib/alerts'
 import { requestNotificationPermission, showAlertNotification, playAlertSound } from '../lib/notifications'
 import { updateUnitLocation, subscribeUnitLocations } from '../lib/tracking'
 import { startLocationWatch, stopLocationWatch } from '../lib/ble'
-import { fetchRoute, stepAlongRoute } from '../lib/routing'
-import { isRouteSimEnabled, setRouteSimEnabled } from '../lib/sandbox'
 import TestModeBanner from '../components/TestModeBanner'
 import TrackingMap from '../components/TrackingMap'
 import styles from './Dashboard.module.css'
 
-// Fixed dispatch point used when real device GPS isn't available (Malabe
-// Bus Stand, Sri Lanka) — a unit only moves from here if location-tracking
-// is explicitly turned on; otherwise it just sits here until real GPS
-// arrives or the responder manually updates status.
-const DISPATCH_START = { lat: 6.9039, lng: 79.9544 }
-const ROUTE_STEP_DEG = 0.0006 // per 3s tick, along actual road geometry
+// Auto-arrival geofence radius, in degrees (~0.001° ≈ 111m at this latitude).
+const ARRIVAL_GEOFENCE_DEG = 0.001
 
 // ── Live elapsed time hook ──────────────────────────────────────────────────
 function useElapsed(createdAt) {
@@ -157,33 +151,57 @@ export default function AmbulanceDashboard({ onLogout }) {
   const [focusedAlertId, setFocusedAlertId] = useState(null)
   const prevCountRef    = useRef(0)
   const initialLoadRef  = useRef(true)
-  const simPosRef = useRef(null)
-  // Real device GPS position, when available, always wins. When it isn't
-  // available, a unit stays put at DISPATCH_START unless route-tracking is
-  // explicitly turned on (routeSimEnabled) — no fake movement by default.
-  const realPosRef = useRef(null)
-  const [routeSimEnabled, setRouteSimEnabledState] = useState(isRouteSimEnabled())
-  const routeCoordsRef = useRef(null)
-  const routeProgressRef = useRef(0)
+  const [hasLocation, setHasLocation] = useState(false)
 
-  if (!simPosRef.current) {
-    simPosRef.current = {
-      lat: DISPATCH_START.lat,
-      lng: DISPATCH_START.lng,
-      startLat: null,
-      startLng: null,
-      activeAlertId: null
-    }
-  }
+  // Keeps the latest alerts available inside the geolocation callback below
+  // without re-registering that callback every time alerts change.
+  const alertsRef = useRef([])
+  useEffect(() => { alertsRef.current = alerts }, [alerts])
+
+  // Bookkeeping only — which alert this unit is currently tracked against,
+  // and the position it was at when dispatch began (so TrackingMap has a
+  // stable route origin). No position data is ever invented here.
+  const activeAlertIdRef = useRef(null)
+  const startCoordsRef = useRef({ lat: null, lng: null })
 
   useEffect(() => { requestNotificationPermission() }, [])
 
+  // Pure real-device GPS tracking: every time the browser reports a new
+  // position, write it straight to Firebase and check the arrival geofence
+  // against whichever alert is currently en_route. If GPS is never
+  // available, this simply never fires — no fake/fallback position is ever
+  // written, so the unit just won't appear on the map.
   useEffect(() => {
+    if (!user) return
     startLocationWatch((loc) => {
-      realPosRef.current = loc
+      setHasLocation(true)
+      const list = alertsRef.current
+      const activeAlert = list.find(a => a.ambulanceStatus === 'en_route')
+      const arrivedAlert = !activeAlert && list.find(a => a.ambulanceStatus === 'arrived')
+
+      if (activeAlert) {
+        if (activeAlertIdRef.current !== activeAlert.id) {
+          activeAlertIdRef.current = activeAlert.id
+          startCoordsRef.current = { lat: loc.lat, lng: loc.lng }
+        }
+        const dist = Math.hypot(activeAlert.lat - loc.lat, activeAlert.lng - loc.lng)
+        if (dist <= ARRIVAL_GEOFENCE_DEG) {
+          updateAlertStatus(activeAlert.id, 'ambulance', 'arrived').catch(console.error)
+        }
+        updateUnitLocation(user.uid, 'ambulance', loc.lat, loc.lng, activeAlert.id, startCoordsRef.current.lat, startCoordsRef.current.lng)
+      } else if (arrivedAlert) {
+        if (activeAlertIdRef.current !== arrivedAlert.id) {
+          activeAlertIdRef.current = arrivedAlert.id
+        }
+        updateUnitLocation(user.uid, 'ambulance', loc.lat, loc.lng, arrivedAlert.id, startCoordsRef.current.lat, startCoordsRef.current.lng)
+      } else {
+        activeAlertIdRef.current = null
+        startCoordsRef.current = { lat: null, lng: null }
+        updateUnitLocation(user.uid, 'ambulance', loc.lat, loc.lng, null)
+      }
     })
     return () => stopLocationWatch()
-  }, [])
+  }, [user])
 
   useEffect(() => {
     const unsubAlerts = subscribeAlerts((list) => {
@@ -201,84 +219,6 @@ export default function AmbulanceDashboard({ onLogout }) {
     const unsubUnits = subscribeUnitLocations(setUnits)
     return () => { unsubAlerts(); unsubUnits() }
   }, [])
-
-  // Location tracking — real device GPS (realPosRef) always wins when
-  // available. Without it, a unit stays put at DISPATCH_START and does
-  // nothing else unless routeSimEnabled is explicitly turned on, in which
-  // case it walks the actual road route to the incident (fetched from
-  // OSRM, same source TrackingMap draws) instead of any straight-line
-  // shortcut — no movement is invented unless this is on.
-  useEffect(() => {
-    if (!user) return
-    const interval = setInterval(async () => {
-      const activeAlert = alerts.find(a => a.ambulanceStatus === 'en_route')
-      const arrivedAlert = alerts.find(a => a.ambulanceStatus === 'arrived')
-      const state = simPosRef.current
-      const real = realPosRef.current
-
-      if (real) {
-        state.lat = real.lat
-        state.lng = real.lng
-      }
-
-      if (activeAlert) {
-        if (state.activeAlertId !== activeAlert.id) {
-          state.activeAlertId = activeAlert.id
-          state.startLat = state.lat
-          state.startLng = state.lng
-          routeCoordsRef.current = null
-          routeProgressRef.current = 0
-        }
-
-        if (real) {
-          const dist = Math.hypot(activeAlert.lat - state.lat, activeAlert.lng - state.lng)
-          if (dist <= 0.001) {
-            updateAlertStatus(activeAlert.id, 'ambulance', 'arrived').catch(console.error)
-          }
-          updateUnitLocation(user.uid, 'ambulance', state.lat, state.lng, activeAlert.id, state.startLat, state.startLng)
-        } else if (routeSimEnabled) {
-          if (!routeCoordsRef.current) {
-            const coords = await fetchRoute([state.lat, state.lng], [activeAlert.lat, activeAlert.lng])
-            routeCoordsRef.current = coords && coords.length > 1
-              ? coords
-              : [[state.lat, state.lng], [activeAlert.lat, activeAlert.lng]]
-          } else {
-            routeProgressRef.current += ROUTE_STEP_DEG
-            const step = stepAlongRoute(routeCoordsRef.current, routeProgressRef.current)
-            state.lat = step.lat
-            state.lng = step.lng
-            if (step.done) {
-              updateAlertStatus(activeAlert.id, 'ambulance', 'arrived').catch(console.error)
-            }
-          }
-          updateUnitLocation(user.uid, 'ambulance', state.lat, state.lng, activeAlert.id, state.startLat, state.startLng)
-        } else {
-          updateUnitLocation(user.uid, 'ambulance', state.lat, state.lng, activeAlert.id, state.startLat, state.startLng)
-        }
-      } else if (arrivedAlert) {
-        if (!real) {
-          state.lat = arrivedAlert.lat
-          state.lng = arrivedAlert.lng
-        }
-        if (state.activeAlertId !== arrivedAlert.id) {
-          state.activeAlertId = arrivedAlert.id
-          if (state.startLat === null) {
-            state.startLat = real ? state.lat : arrivedAlert.lat - 0.005
-            state.startLng = real ? state.lng : arrivedAlert.lng - 0.005
-          }
-        }
-        updateUnitLocation(user.uid, 'ambulance', state.lat, state.lng, arrivedAlert.id, state.startLat, state.startLng)
-      } else {
-        state.activeAlertId = null
-        state.startLat = null
-        state.startLng = null
-        routeCoordsRef.current = null
-        routeProgressRef.current = 0
-        updateUnitLocation(user.uid, 'ambulance', state.lat, state.lng, null)
-      }
-    }, 3000)
-    return () => clearInterval(interval)
-  }, [user, alerts, routeSimEnabled])
 
   const handleFilterChange = (key, val) => setFilters(prev => ({ ...prev, [key]: val }))
 
@@ -333,7 +273,9 @@ export default function AmbulanceDashboard({ onLogout }) {
         </div>
       </div>
 
-      <p className={styles.hint}>📍 Live tracking active</p>
+      <p className={styles.hint}>
+        {hasLocation ? '📍 Live GPS tracking active' : '📍 Waiting for location permission…'}
+      </p>
 
       {/* Dispatch Map */}
       <TrackingMap alerts={mapAlerts} units={mapUnits} focusedAlertId={focusedAlertId} />
@@ -380,23 +322,6 @@ export default function AmbulanceDashboard({ onLogout }) {
           ))
         )}
       </div>
-
-      <button
-        onClick={() => {
-          const next = !routeSimEnabled
-          setRouteSimEnabled(next)
-          setRouteSimEnabledState(next)
-        }}
-        title="Toggle location tracking"
-        aria-label="Toggle location tracking"
-        style={{
-          display: 'block', margin: '2rem auto 0', padding: '2px 8px',
-          fontSize: '0.7rem', opacity: 0.25, background: 'transparent',
-          border: 'none', color: 'var(--text-muted)', cursor: 'pointer',
-        }}
-      >
-        •
-      </button>
     </DashboardLayout>
   )
 }
