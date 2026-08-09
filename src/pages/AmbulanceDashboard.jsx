@@ -158,44 +158,49 @@ export default function AmbulanceDashboard({ onLogout }) {
   const alertsRef = useRef([])
   useEffect(() => { alertsRef.current = alerts }, [alerts])
 
-  // Bookkeeping only — which alert this unit is currently tracked against,
-  // and the position it was at when dispatch began (so TrackingMap has a
-  // stable route origin). No position data is ever invented here.
-  const activeAlertIdRef = useRef(null)
+  // Which alert THIS responder explicitly clicked "We're En Route" on — set
+  // only by setStatus() below, never inferred from the shared alerts list.
+  // With multiple alerts simultaneously en_route (common — several
+  // accidents can be active at once, plus leftover test alerts), picking
+  // "whichever one is en_route" is ambiguous and can silently track the
+  // wrong alert's location. This ref is the single source of truth for
+  // which incident this device's GPS should be compared against.
+  const myAlertIdRef = useRef(null)
+  // Which id we've already captured a dispatch-start position for, and that
+  // position — just bookkeeping for TrackingMap's route origin, not invented data.
+  const startCapturedIdRef = useRef(null)
   const startCoordsRef = useRef({ lat: null, lng: null })
 
   useEffect(() => { requestNotificationPermission() }, [])
 
   // Pure real-device GPS tracking: every time the browser reports a new
-  // position, write it straight to Firebase and check the arrival geofence
-  // against whichever alert is currently en_route. If GPS is never
-  // available, this simply never fires — no fake/fallback position is ever
-  // written, so the unit just won't appear on the map.
+  // position, write it straight to Firebase and — only for the specific
+  // alert this responder accepted (myAlertIdRef) — check the arrival
+  // geofence. If GPS is never available, this simply never fires — no
+  // fake/fallback position is ever written, so the unit just won't appear
+  // on the map.
   useEffect(() => {
     if (!user) return
     startLocationWatch((loc) => {
       setHasLocation(true)
-      const list = alertsRef.current
-      const activeAlert = list.find(a => a.ambulanceStatus === 'en_route')
-      const arrivedAlert = !activeAlert && list.find(a => a.ambulanceStatus === 'arrived')
+      const myId = myAlertIdRef.current
+      const alert = myId ? alertsRef.current.find(a => a.id === myId) : null
 
-      if (activeAlert) {
-        if (activeAlertIdRef.current !== activeAlert.id) {
-          activeAlertIdRef.current = activeAlert.id
+      if (alert && alert.ambulanceStatus === 'en_route') {
+        if (startCapturedIdRef.current !== alert.id) {
+          startCapturedIdRef.current = alert.id
           startCoordsRef.current = { lat: loc.lat, lng: loc.lng }
         }
-        const dist = Math.hypot(activeAlert.lat - loc.lat, activeAlert.lng - loc.lng)
+        const dist = Math.hypot(alert.lat - loc.lat, alert.lng - loc.lng)
         if (dist <= ARRIVAL_GEOFENCE_DEG) {
-          updateAlertStatus(activeAlert.id, 'ambulance', 'arrived').catch(console.error)
+          updateAlertStatus(alert.id, 'ambulance', 'arrived').catch(console.error)
         }
-        updateUnitLocation(user.uid, 'ambulance', loc.lat, loc.lng, activeAlert.id, startCoordsRef.current.lat, startCoordsRef.current.lng)
-      } else if (arrivedAlert) {
-        if (activeAlertIdRef.current !== arrivedAlert.id) {
-          activeAlertIdRef.current = arrivedAlert.id
-        }
-        updateUnitLocation(user.uid, 'ambulance', loc.lat, loc.lng, arrivedAlert.id, startCoordsRef.current.lat, startCoordsRef.current.lng)
+        updateUnitLocation(user.uid, 'ambulance', loc.lat, loc.lng, alert.id, startCoordsRef.current.lat, startCoordsRef.current.lng)
+      } else if (alert && alert.ambulanceStatus === 'arrived') {
+        updateUnitLocation(user.uid, 'ambulance', loc.lat, loc.lng, alert.id, startCoordsRef.current.lat, startCoordsRef.current.lng)
       } else {
-        activeAlertIdRef.current = null
+        myAlertIdRef.current = null
+        startCapturedIdRef.current = null
         startCoordsRef.current = { lat: null, lng: null }
         updateUnitLocation(user.uid, 'ambulance', loc.lat, loc.lng, null)
       }
@@ -223,6 +228,11 @@ export default function AmbulanceDashboard({ onLogout }) {
   const handleFilterChange = (key, val) => setFilters(prev => ({ ...prev, [key]: val }))
 
   const setStatus = (alertId, status) => {
+    if (status === 'en_route') {
+      // This is now the one specific alert this device's GPS tracks —
+      // see myAlertIdRef above.
+      myAlertIdRef.current = alertId
+    }
     updateAlertStatus(alertId, 'ambulance', status).catch(console.error)
   }
 
