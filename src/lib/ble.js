@@ -1,9 +1,10 @@
 const SERVICE_UUID        = '12345678-1234-1234-1234-123456789abc'
 const CHARACTERISTIC_UUID = 'abcd1234-ab12-cd34-ef56-abcdef123456'
 
-// Fallback location (Colombo, Sri Lanka)
-const FALLBACK_LAT = 6.9271
-const FALLBACK_LNG = 79.8612
+// Fallback location (CINEC Campus, Malabe, Sri Lanka) — used when real
+// device geolocation isn't available.
+const FALLBACK_LAT = 6.915423
+const FALLBACK_LNG = 79.96052
 
 // ── Cooldown ────────────────────────────────────────────────────────────────
 // The firmware already runs its own on-device threshold + 3-reading-confirm +

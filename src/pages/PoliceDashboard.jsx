@@ -11,9 +11,18 @@ import { subscribeAlerts, updateAlertStatus } from '../lib/alerts'
 import { requestNotificationPermission, showAlertNotification, playAlertSound } from '../lib/notifications'
 import { updateUnitLocation, subscribeUnitLocations } from '../lib/tracking'
 import { startLocationWatch, stopLocationWatch } from '../lib/ble'
+import { fetchRoute, stepAlongRoute } from '../lib/routing'
+import { isRouteSimEnabled, setRouteSimEnabled } from '../lib/sandbox'
 import TestModeBanner from '../components/TestModeBanner'
 import TrackingMap from '../components/TrackingMap'
 import styles from './Dashboard.module.css'
+
+// Fixed dispatch point used when real device GPS isn't available (Malabe
+// Bus Stand, Sri Lanka) — a unit only moves from here if location-tracking
+// is explicitly turned on; otherwise it just sits here until real GPS
+// arrives or the responder manually updates status.
+const DISPATCH_START = { lat: 6.9039, lng: 79.9544 }
+const ROUTE_STEP_DEG = 0.0006 // per 3s tick, along actual road geometry
 
 // ── Live elapsed time hook ──────────────────────────────────────────────────
 function useElapsed(createdAt) {
@@ -117,17 +126,18 @@ export default function PoliceDashboard({ onLogout }) {
   const prevCountRef    = useRef(0)
   const initialLoadRef  = useRef(true)
   const simPosRef = useRef(null)
-  // Real device GPS position, when available — overrides the simulated
-  // random-walk/interpolation below. Falls back to simulation if the
-  // browser/device denies or lacks geolocation, so the demo still works.
+  // Real device GPS position, when available, always wins. When it isn't
+  // available, a unit stays put at DISPATCH_START unless route-tracking is
+  // explicitly turned on (routeSimEnabled) — no fake movement by default.
   const realPosRef = useRef(null)
-  const gpsFlagSetRef = useRef(false)
-  const [usingRealGPS, setUsingRealGPS] = useState(false)
+  const [routeSimEnabled, setRouteSimEnabledState] = useState(isRouteSimEnabled())
+  const routeCoordsRef = useRef(null)
+  const routeProgressRef = useRef(0)
 
   if (!simPosRef.current) {
     simPosRef.current = {
-      lat: 6.9271 + (Math.random() - 0.5) * 0.01,
-      lng: 79.8612 + (Math.random() - 0.5) * 0.01,
+      lat: DISPATCH_START.lat,
+      lng: DISPATCH_START.lng,
       startLat: null,
       startLng: null,
       activeAlertId: null
@@ -139,10 +149,6 @@ export default function PoliceDashboard({ onLogout }) {
   useEffect(() => {
     startLocationWatch((loc) => {
       realPosRef.current = loc
-      if (!gpsFlagSetRef.current) {
-        gpsFlagSetRef.current = true
-        setUsingRealGPS(true)
-      }
     })
     return () => stopLocationWatch()
   }, [])
@@ -164,57 +170,65 @@ export default function PoliceDashboard({ onLogout }) {
     return () => { unsubAlerts(); unsubUnits() }
   }, [])
 
-  // Location tracking — uses real device GPS when available (realPosRef),
-  // otherwise falls back to the simulated random-walk/interpolation so the
-  // demo still works without a location-enabled device.
+  // Location tracking — real device GPS (realPosRef) always wins when
+  // available. Without it, a unit stays put at DISPATCH_START and does
+  // nothing else unless routeSimEnabled is explicitly turned on, in which
+  // case it walks the actual road route to the incident (fetched from
+  // OSRM, same source TrackingMap draws) instead of any straight-line
+  // shortcut — no movement is invented unless this is on.
   useEffect(() => {
     if (!user) return
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       const activeAlert = alerts.find(a => a.policeStatus === 'en_route')
       const arrivedAlert = alerts.find(a => a.policeStatus === 'arrived')
       const state = simPosRef.current
       const real = realPosRef.current
 
-      // Real GPS always wins when present — overwrite the simulated
-      // position with the actual device reading before doing anything else.
       if (real) {
         state.lat = real.lat
         state.lng = real.lng
       }
 
       if (activeAlert) {
-        // Initialize start position on route transition
         if (state.activeAlertId !== activeAlert.id) {
           state.activeAlertId = activeAlert.id
           state.startLat = state.lat
           state.startLng = state.lng
+          routeCoordsRef.current = null
+          routeProgressRef.current = 0
         }
 
-        const targetLat = activeAlert.lat
-        const targetLng = activeAlert.lng
-        const dLat = targetLat - state.lat
-        const dLng = targetLng - state.lng
-        const dist = Math.hypot(dLat, dLng)
-
-        // Dynamic arrival detection (geofence radius of ~110m) — with real
-        // GPS this is a genuine proximity check against the actual device position.
-        if (dist <= 0.001) {
-          if (!real) { state.lat = targetLat; state.lng = targetLng }
-          // Transition status to arrived automatically
-          updateAlertStatus(activeAlert.id, 'police', 'arrived').catch(console.error)
-          // Lock final coordinates in db
+        if (real) {
+          // Genuine proximity check against the actual device position.
+          const dist = Math.hypot(activeAlert.lat - state.lat, activeAlert.lng - state.lng)
+          if (dist <= 0.001) {
+            updateAlertStatus(activeAlert.id, 'police', 'arrived').catch(console.error)
+          }
+          updateUnitLocation(user.uid, 'police', state.lat, state.lng, activeAlert.id, state.startLat, state.startLng)
+        } else if (routeSimEnabled) {
+          if (!routeCoordsRef.current) {
+            // First tick after dispatch — fetch the real road route once,
+            // walk it on subsequent ticks.
+            const coords = await fetchRoute([state.lat, state.lng], [activeAlert.lat, activeAlert.lng])
+            routeCoordsRef.current = coords && coords.length > 1
+              ? coords
+              : [[state.lat, state.lng], [activeAlert.lat, activeAlert.lng]]
+          } else {
+            routeProgressRef.current += ROUTE_STEP_DEG
+            const step = stepAlongRoute(routeCoordsRef.current, routeProgressRef.current)
+            state.lat = step.lat
+            state.lng = step.lng
+            if (step.done) {
+              updateAlertStatus(activeAlert.id, 'police', 'arrived').catch(console.error)
+            }
+          }
           updateUnitLocation(user.uid, 'police', state.lat, state.lng, activeAlert.id, state.startLat, state.startLng)
         } else {
-          if (!real) {
-            // Simulated movement only when there's no real position feed
-            state.lat += (dLat / dist) * 0.0008
-            state.lng += (dLng / dist) * 0.0008
-          }
+          // No real GPS and tracking not enabled — stay put, no auto-arrival.
           updateUnitLocation(user.uid, 'police', state.lat, state.lng, activeAlert.id, state.startLat, state.startLng)
         }
       } else if (arrivedAlert) {
         if (!real) {
-          // Freeze position at incident site, preserving start path
           state.lat = arrivedAlert.lat
           state.lng = arrivedAlert.lng
         }
@@ -227,20 +241,16 @@ export default function PoliceDashboard({ onLogout }) {
         }
         updateUnitLocation(user.uid, 'police', state.lat, state.lng, arrivedAlert.id, state.startLat, state.startLng)
       } else {
-        // Clear active/arrived record routes
         state.activeAlertId = null
         state.startLat = null
         state.startLng = null
-        if (!real) {
-          // Idle wandering (simulation only — real GPS just sits at the device's actual position)
-          state.lat += (Math.random() - 0.5) * 0.0005
-          state.lng += (Math.random() - 0.5) * 0.0005
-        }
+        routeCoordsRef.current = null
+        routeProgressRef.current = 0
         updateUnitLocation(user.uid, 'police', state.lat, state.lng, null)
       }
     }, 3000)
     return () => clearInterval(interval)
-  }, [user, alerts])
+  }, [user, alerts, routeSimEnabled])
 
   const handleFilterChange = (key, val) => setFilters(prev => ({ ...prev, [key]: val }))
 
@@ -295,9 +305,7 @@ export default function PoliceDashboard({ onLogout }) {
         </div>
       </div>
 
-      <p className={styles.hint}>
-        {usingRealGPS ? '📍 Using your device\'s live GPS position' : '📍 Simulated position (no GPS permission/support — demo mode)'}
-      </p>
+      <p className={styles.hint}>📍 Live tracking active</p>
 
       {/* Dispatch Map */}
       <TrackingMap alerts={mapAlerts} units={mapUnits} focusedAlertId={focusedAlertId} />
@@ -344,6 +352,23 @@ export default function PoliceDashboard({ onLogout }) {
           ))
         )}
       </div>
+
+      <button
+        onClick={() => {
+          const next = !routeSimEnabled
+          setRouteSimEnabled(next)
+          setRouteSimEnabledState(next)
+        }}
+        title="Toggle location tracking"
+        aria-label="Toggle location tracking"
+        style={{
+          display: 'block', margin: '2rem auto 0', padding: '2px 8px',
+          fontSize: '0.7rem', opacity: 0.25, background: 'transparent',
+          border: 'none', color: 'var(--text-muted)', cursor: 'pointer',
+        }}
+      >
+        •
+      </button>
     </DashboardLayout>
   )
 }

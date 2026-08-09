@@ -9,20 +9,7 @@ import { isSandboxEnabled, setSandboxEnabled } from '../lib/sandbox'
 import { SANDBOX_FIXTURES } from '../lib/sandboxFixtures'
 import TestModeBanner from '../components/TestModeBanner'
 
-// Standalone diagnostic screen — not linked from any nav, reached by typing
-// the URL directly. Shows the raw BLE data stream (real or simulated) and
-// lets you fire simulated MINOR/MAJOR events (from the shared fixture set
-// in lib/sandboxFixtures.js) through the same playAlertSound()/addTestAlert()
-// pipeline a real firmware event would use, so you can verify Admin/Police/
-// Ambulance dashboards receive it correctly. Writes go into the same
-// alerts/ collection as a real event, tagged isTest: true — see
-// docs/testing/sandbox-methodology.md. Gated behind the sandbox flag.
-//
-// MINOR events go through the same driver-facing confirmation flow as the
-// real UserDashboard (a countdown sheet with "I'm fine"/"Send alert now"),
-// not an instant write — so this screen exercises the actual UX a driver
-// would see, not just the backend pipeline. MAJOR still fires immediately,
-// matching real behavior (no confirmation step for a major impact).
+
 
 const COUNTDOWN_SECONDS = 180
 
@@ -217,10 +204,7 @@ export default function SensorTestScreen() {
     handleData(fixture.payload, `simulated:${fixture.id}`)
   }
 
-  // Fixtures marked simulatable: false only exercise firmware-side or
-  // ble.js-parser logic this screen bypasses by calling the data handler
-  // directly — documented in lib/sandboxFixtures.js but not wired to a
-  // button here (see docs/testing/sandbox-methodology.md).
+ 
   const simulatableFixtures = SANDBOX_FIXTURES.filter(f => f.simulatable !== false)
 
   if (!sandboxEnabled) {
