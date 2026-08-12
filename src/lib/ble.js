@@ -100,7 +100,17 @@ export function startLocationWatch(onUpdate) {
   cachedLocation = null
   watchId = navigator.geolocation.watchPosition(
     (pos) => {
-      cachedLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+      // accuracy (meters) matters a lot here: devices without real GPS
+      // hardware (most laptops/desktops) fall back to WiFi/IP-based
+      // estimation, which the browser still happily reports a lat/lng for
+      // — just with a large accuracy radius (often several km), silently
+      // making any fine-grained proximity check (e.g. arrival geofencing)
+      // meaningless. Surfacing it lets callers decide whether to trust it.
+      cachedLocation = {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+      }
       if (onUpdate) onUpdate(cachedLocation)
     },
     (err) => console.warn('Location watch error:', err),

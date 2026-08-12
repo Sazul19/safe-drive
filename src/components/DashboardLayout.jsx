@@ -23,7 +23,7 @@ function LiveClock() {
   )
 }
 
-export default function DashboardLayout({ title, role, user, onLogout, children }) {
+export default function DashboardLayout({ title, role, user, onLogout, children, headerActions }) {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [muted, setMutedState] = useState(() => isMuted())
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -201,6 +201,7 @@ export default function DashboardLayout({ title, role, user, onLogout, children 
           </div>
 
           <div className={styles.headerRight}>
+            {headerActions}
             <span
               className={`${styles.liveDot} ${connected ? '' : styles.offline}`}
               title={connected ? 'Connected to Firebase' : 'Disconnected — realtime updates paused'}

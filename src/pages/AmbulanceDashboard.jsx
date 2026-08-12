@@ -13,10 +13,17 @@ import { updateUnitLocation, subscribeUnitLocations } from '../lib/tracking'
 import { startLocationWatch, stopLocationWatch } from '../lib/ble'
 import TestModeBanner from '../components/TestModeBanner'
 import TrackingMap from '../components/TrackingMap'
+import SimulateDropdown from '../components/SimulateDropdown'
 import styles from './Dashboard.module.css'
 
 // Auto-arrival geofence radius, in degrees (~0.001° ≈ 111m at this latitude).
 const ARRIVAL_GEOFENCE_DEG = 0.001
+// Only trust a position for auto-arrival if the browser reports accuracy
+// at or below this (meters). Real phone GPS is typically 5-20m; laptops
+// without a GPS chip often report accuracy in the hundreds/thousands of
+// meters via WiFi/IP-based estimation — not precise enough to trust for a
+// ~111m proximity decision.
+const MIN_ARRIVAL_ACCURACY_M = 100
 
 // ── Live elapsed time hook ──────────────────────────────────────────────────
 function useElapsed(createdAt) {
@@ -152,6 +159,12 @@ export default function AmbulanceDashboard({ onLogout }) {
   const prevCountRef    = useRef(0)
   const initialLoadRef  = useRef(true)
   const [hasLocation, setHasLocation] = useState(false)
+  const [lowAccuracy, setLowAccuracy] = useState(false)
+  // Client-side-only alert injected by the header's Simulate dropdown while
+  // a demo (Malabe → CINEC) is running — never written to Firebase's
+  // alerts/ collection, just merged into what the map renders so
+  // TrackingMap draws the route exactly as it would for a real incident.
+  const [demoAlert, setDemoAlert] = useState(null)
 
   // Keeps the latest alerts available inside the geolocation callback below
   // without re-registering that callback every time alerts change.
@@ -183,6 +196,7 @@ export default function AmbulanceDashboard({ onLogout }) {
     if (!user) return
     startLocationWatch((loc) => {
       setHasLocation(true)
+      setLowAccuracy(loc.accuracy != null && loc.accuracy > MIN_ARRIVAL_ACCURACY_M)
       const myId = myAlertIdRef.current
       const alert = myId ? alertsRef.current.find(a => a.id === myId) : null
 
@@ -191,8 +205,13 @@ export default function AmbulanceDashboard({ onLogout }) {
           startCapturedIdRef.current = alert.id
           startCoordsRef.current = { lat: loc.lat, lng: loc.lng }
         }
+        // Skip the auto-arrival check on imprecise fixes (e.g. a laptop
+        // with no GPS chip falling back to WiFi/IP-based estimation, often
+        // off by kilometers) — still shown on the map, just not trusted
+        // for a ~111m proximity decision. Position keeps updating either way.
         const dist = Math.hypot(alert.lat - loc.lat, alert.lng - loc.lng)
-        if (dist <= ARRIVAL_GEOFENCE_DEG) {
+        const accurateEnough = loc.accuracy == null || loc.accuracy <= MIN_ARRIVAL_ACCURACY_M
+        if (accurateEnough && dist <= ARRIVAL_GEOFENCE_DEG) {
           updateAlertStatus(alert.id, 'ambulance', 'arrived').catch(console.error)
         }
         updateUnitLocation(user.uid, 'ambulance', loc.lat, loc.lng, alert.id, startCoordsRef.current.lat, startCoordsRef.current.lng)
@@ -249,11 +268,18 @@ export default function AmbulanceDashboard({ onLogout }) {
   // only units responding to it. Unfocused, the map keeps showing every
   // alert regardless of the list's severity/status filter (unchanged from
   // before — the map and the filtered list below are independent views).
-  const mapAlerts = focusedAlertId ? alerts.filter(a => a.id === focusedAlertId) : alerts
+  const alertsWithDemo = demoAlert ? [...alerts, demoAlert] : alerts
+  const mapAlerts = focusedAlertId ? alertsWithDemo.filter(a => a.id === focusedAlertId) : alertsWithDemo
   const mapUnits = focusedAlertId ? units.filter(u => u.alertId === focusedAlertId) : units
 
   return (
-    <DashboardLayout title="Emergency Alerts" role="ambulance" user={user} onLogout={onLogout}>
+    <DashboardLayout
+      title="Emergency Alerts"
+      role="ambulance"
+      user={user}
+      onLogout={onLogout}
+      headerActions={user && <SimulateDropdown role="ambulance" uid={user.uid} onDemoAlertChange={setDemoAlert} />}
+    >
       {alerts.some(a => a.isTest) && <TestModeBanner />}
       {popupAlert && (
         <AlertPopup
@@ -284,7 +310,11 @@ export default function AmbulanceDashboard({ onLogout }) {
       </div>
 
       <p className={styles.hint}>
-        {hasLocation ? '📍 Live GPS tracking active' : '📍 Waiting for location permission…'}
+        {!hasLocation
+          ? '📍 Waiting for location permission…'
+          : lowAccuracy
+            ? '📍 Low-accuracy location (no GPS hardware) — mark arrival manually'
+            : '📍 Live GPS tracking active'}
       </p>
 
       {/* Dispatch Map */}
