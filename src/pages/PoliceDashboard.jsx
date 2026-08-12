@@ -128,11 +128,6 @@ export default function PoliceDashboard({ onLogout }) {
   const initialLoadRef  = useRef(true)
   const [hasLocation, setHasLocation] = useState(false)
   const [lowAccuracy, setLowAccuracy] = useState(false)
-  // Client-side-only alert injected by the header's Simulate dropdown while
-  // a demo (Malabe → CINEC) is running — never written to Firebase's
-  // alerts/ collection, just merged into what the map renders so
-  // TrackingMap draws the route exactly as it would for a real incident.
-  const [demoAlert, setDemoAlert] = useState(null)
 
   // Keeps the latest alerts available inside the geolocation callback below
   // without re-registering that callback every time alerts change.
@@ -238,8 +233,7 @@ export default function PoliceDashboard({ onLogout }) {
   // only units responding to it. Unfocused, the map keeps showing every
   // alert regardless of the list's severity/status filter (unchanged from
   // before — the map and the filtered list below are independent views).
-  const alertsWithDemo = demoAlert ? [...alerts, demoAlert] : alerts
-  const mapAlerts = focusedAlertId ? alertsWithDemo.filter(a => a.id === focusedAlertId) : alertsWithDemo
+  const mapAlerts = focusedAlertId ? alerts.filter(a => a.id === focusedAlertId) : alerts
   const mapUnits = focusedAlertId ? units.filter(u => u.alertId === focusedAlertId) : units
 
   return (
@@ -248,7 +242,7 @@ export default function PoliceDashboard({ onLogout }) {
       role="police"
       user={user}
       onLogout={onLogout}
-      headerActions={user && <SimulateDropdown role="police" uid={user.uid} onDemoAlertChange={setDemoAlert} />}
+      headerActions={user && <SimulateDropdown role="police" uid={user.uid} />}
     >
       {alerts.some(a => a.isTest) && <TestModeBanner />}
       {popupAlert && (
