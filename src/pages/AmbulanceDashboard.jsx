@@ -11,7 +11,7 @@ import { subscribeAlerts, updateAlertStatus } from '../lib/alerts'
 import { requestNotificationPermission, showAlertNotification, playAlertSound } from '../lib/notifications'
 import { updateUnitLocation, subscribeUnitLocations } from '../lib/tracking'
 import { startLocationWatch, stopLocationWatch } from '../lib/ble'
-import TestModeBanner from '../components/TestModeBanner'
+import { useSimulateTracking } from '../hooks/useSimulateTracking'
 import TrackingMap from '../components/TrackingMap'
 import SimulateDropdown from '../components/SimulateDropdown'
 import styles from './Dashboard.module.css'
@@ -149,6 +149,7 @@ function AlertCard({ a, index, onStatusChange, isFocused, onToggleFocus }) {
 // ── Main Dashboard ──────────────────────────────────────────────────────────
 export default function AmbulanceDashboard({ onLogout }) {
   const { user } = useAuth()
+  const simulate = useSimulateTracking('ambulance', user?.uid)
   const [alerts, setAlerts]     = useState([])
   const [units, setUnits]       = useState([])
   const [popupAlert, setPopupAlert] = useState(null)
@@ -272,9 +273,15 @@ export default function AmbulanceDashboard({ onLogout }) {
       role="ambulance"
       user={user}
       onLogout={onLogout}
-      headerActions={user && <SimulateDropdown role="ambulance" uid={user.uid} />}
+      profileMenuExtra={
+        <SimulateDropdown
+          status={simulate.status}
+          secondsLeft={simulate.secondsLeft}
+          onStart={simulate.start}
+          onStop={simulate.stop}
+        />
+      }
     >
-      {alerts.some(a => a.isTest) && <TestModeBanner />}
       {popupAlert && (
         <AlertPopup
           alert={popupAlert}

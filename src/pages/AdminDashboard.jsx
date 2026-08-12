@@ -10,7 +10,6 @@ import { subscribeAlerts, deleteAlert, logAlertDeletion, SEVERITY_LABELS } from 
 import { subscribeUnitLocations } from '../lib/tracking'
 import AlertPopup from '../components/AlertPopup'
 import { requestNotificationPermission, showAlertNotification, playAlertSound } from '../lib/notifications'
-import TestModeBanner from '../components/TestModeBanner'
 import TrackingMap from '../components/TrackingMap'
 import styles from './Dashboard.module.css'
 
@@ -206,7 +205,6 @@ export default function AdminDashboard({ onLogout }) {
 
   return (
     <DashboardLayout title="Monitor Response" role="admin" user={user} onLogout={onLogout}>
-      {alerts.some(a => a.isTest) && <TestModeBanner />}
       {popupAlert && (
         <AlertPopup
           alert={popupAlert}
